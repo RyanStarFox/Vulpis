@@ -136,14 +136,17 @@ class DocumentLoader:
         return slides
 
     def load_docx(self, file_path: str) -> str:
-        """加载DOCX文件
-        TODO: 实现DOCX文件加载
-        要求：
-        1. 使用docx2txt读取DOCX文件
-        2. 返回文本内容
-        """
-        text = docx2txt.process(file_path)
-        return text
+        """加载DOCX文件"""
+        try:
+            import docx2txt
+            text = docx2txt.process(file_path)
+            return text
+        except ImportError:
+            print("Error: docx2txt module not found.")
+            return "Error: Document parser missing."
+        except Exception as e:
+            print(f"Error processing docx: {e}")
+            return ""
 
     def load_txt(self, file_path: str) -> str:
         """加载TXT文件
