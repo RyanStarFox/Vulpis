@@ -138,36 +138,8 @@ jobs:
              "$pythonLocation/python" -m PyInstaller --clean --noconfirm --name python-backend --windowed --onedir --contents-directory . --copy-metadata streamlit --copy-metadata chromadb --copy-metadata langchain --copy-metadata langchain-community --add-data "app.py;." --add-data "ui_components.py;." --add-data "config.py;." --add-data "settings_utils.py;." --add-data "$ST_PATH/static;streamlit/static" --add-data "$ST_PATH/runtime;streamlit/runtime" --add-data "pages;pages" --add-data "logo.png;." --hidden-import=kb_manager --hidden-import=rag_agent --hidden-import=question_db --hidden-import=document_loader --hidden-import=vector_store --hidden-import=text_splitter app.py --distpath desktop-app/python-dist --workpath desktop-app/build
              
              echo "Injecting missing packages manually..."
-             cat <<EOF > inject_pkgs.py
-import os
-import shutil
-import docx2txt
-import rank_bm25
-import pdfplumber
-import pptx
-
-# FIX: PyInstaller with --contents-directory . puts everything in root, not _internal
-dest = 'desktop-app/python-dist/python-backend'
-
-pkgs = [
-    (docx2txt, 'docx2txt'),
-    (rank_bm25, 'rank_bm25'),
-    (pdfplumber, 'pdfplumber'),
-    (pptx, 'pptx')
-]
-
-for pkg, name in pkgs:
-    try:
-        if hasattr(pkg, '__path__'):
-             src = pkg.__path__[0]
-        else:
-             src = os.path.dirname(pkg.__file__)
-        print(f'Copying {name} from {src} to {dest}/{name}')
-        shutil.copytree(src, os.path.join(dest, name), dirs_exist_ok=True)
-    except Exception as e:
-        print(f'Failed to copy {name}: {e}')
-EOF
-             "$pythonLocation/python" inject_pkgs.py
+             # Execute the standalone script to avoid YAML syntax issues
+             "$pythonLocation/python" scripts/inject_dist_packages.py
              
              # Copy necessary data folders if they exist
              if [ -d "vector_db" ]; then cp -r vector_db desktop-app/python-dist/python-backend/; fi
