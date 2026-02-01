@@ -5,7 +5,6 @@ import os
 import sys
 
 # --- DEBUG LOGGING START ---
-import pkg_resources
 import importlib.util
 
 debug_info = []
@@ -21,12 +20,6 @@ for mod in target_modules:
         debug_info.append(f"Spec for {mod}: {spec}")
     except Exception as e:
         debug_info.append(f"Spec check failed for {mod}: {e}")
-        
-    try:
-        dist = pkg_resources.get_distribution(mod)
-        debug_info.append(f"Dist for {mod}: {dist.location} ({dist.version})")
-    except Exception as e:
-        debug_info.append(f"Dist check failed for {mod}: {e}")
 
 try:
     debug_info.append(f"Dir of __file__: {os.path.dirname(__file__)}")
@@ -54,7 +47,6 @@ with st.expander("🔧 开发者诊断 (Developer Diagnostics)", expanded=False)
     with col1:
         if st.button("检查模块状态 (Check Modules)"):
             import importlib
-            import pkg_resources
             import sys
             
             check_results = []
