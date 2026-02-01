@@ -1,0 +1,17 @@
+streamlit
+chromadb
+langchain
+langchain-community
+openai
+docx2txt
+rank_bm25
+pdfplumber
+python-pptx
+PyMuPDF
+PyPDF2
+pandas
+numpy
+openpyxl
+tiktoken
+watchdog
+python-dotenv
