@@ -1,7 +1,5 @@
 streamlit
 chromadb
-langchain
-langchain-community
 openai
 docx2txt
 rank_bm25
@@ -13,5 +11,8 @@ pandas
 numpy
 openpyxl
 tiktoken
-watchdog
 python-dotenv
+jieba
+httpx
+tqdm
+watchdog
