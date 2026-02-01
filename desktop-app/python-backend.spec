@@ -11,31 +11,34 @@ from PyInstaller.utils.hooks import collect_data_files, collect_submodules, coll
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(SPEC)))
 
 # Collect all necessary data files
+# Collect all necessary data files
 datas = [
     # Streamlit app files
     (os.path.join(project_root, 'app.py'), '.'),
-    (os.path.join(project_root, 'config.py'), '.'),
-    (os.path.join(project_root, 'database.py'), '.'),
-    (os.path.join(project_root, 'document_loader.py'), '.'),
-    # (os.path.join(project_root, 'exercise_generator.py'), '.'), # REMOVED: File does not exist
-    (os.path.join(project_root, 'kb_manager.py'), '.'),
-    (os.path.join(project_root, 'question_db.py'), '.'),
-    (os.path.join(project_root, 'rag_agent.py'), '.'),
-    (os.path.join(project_root, 'settings_utils.py'), '.'),
-    (os.path.join(project_root, 'text_splitter.py'), '.'),
-    (os.path.join(project_root, 'ui_components.py'), '.'), # ADDED CRITICAL MISSING FILE
-    (os.path.join(project_root, 'vector_store.py'), '.'),
+    
+    # Core Package (All backend logic is here now)
+    (os.path.join(project_root, 'core'), 'core'),
+    
+    # Streamlit Pages
     (os.path.join(project_root, 'pages'), 'pages'),
-    # Font files
-    (os.path.join(project_root, 'simhei.ttf'), '.'),
-    (os.path.join(project_root, 'simhei.pkl'), '.'),
-    (os.path.join(project_root, 'simhei.cw127.pkl'), '.'),
 ]
+
+# Add font files if they exist (Prevent build failure if missing)
+font_files = ['simhei.ttf', 'simhei.pkl', 'simhei.cw127.pkl']
+for f in font_files:
+    f_path = os.path.join(project_root, f)
+    if os.path.exists(f_path):
+        datas.append((f_path, '.'))
 
 # Add logo if exists
 logo_path = os.path.join(project_root, 'logo.png')
 if os.path.exists(logo_path):
     datas.append((logo_path, '.'))
+
+# Add assets folder if exists (CRITICAL for logo)
+assets_path = os.path.join(project_root, 'assets')
+if os.path.exists(assets_path):
+    datas.append((assets_path, 'assets'))
 
 # Collect Streamlit data files and metadata
 from PyInstaller.utils.hooks import copy_metadata
