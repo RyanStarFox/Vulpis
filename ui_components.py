@@ -168,7 +168,7 @@ def settings_dialog():
                 found = detect_pandoc_path()
                 if found:
                     st.session_state["detected_pandoc_path"] = found
-                    st.toast(f"✅ 已检测到 Pandoc: {found}", icon="🎉")
+                    st.rerun()
                 else:
                     st.toast("⚠️ 未检测到 Pandoc，请手动指定或确认已安装。", icon="❌")
         

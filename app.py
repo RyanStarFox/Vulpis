@@ -8,9 +8,7 @@ import mimetypes
 mimetypes.add_type('application/javascript', '.js')
 mimetypes.add_type('text/css', '.css')
 
-# Debug MIME
-print(f"DEBUG: JS MIME type is: {mimetypes.guess_type('test.js')[0]}")
-sys.stdout.flush()
+
 
 # --- PyInstaller Hooks ---
 # Force PyInstaller to bundle these modules (referenced in pages/)
