@@ -11,10 +11,10 @@ sys.path.append(os.getcwd())
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import streamlit.components.v1 as components
-from question_db import QuestionDB
+from core.question_db import QuestionDB
 from openai import OpenAI
-from config import OPENAI_API_KEY, OPENAI_API_BASE, VL_MODEL_NAME, MODEL_NAME
-import ui_components
+from core.config import OPENAI_API_KEY, OPENAI_API_BASE, VL_MODEL_NAME, MODEL_NAME
+from core import ui_components
 
 # Inject JS for keyboard shortcut (Cmd/Ctrl + ,)
 components.html("""
@@ -216,7 +216,7 @@ def process_question_async(rid, book_name, q_c, q_o, q_correct, q_e, ocr_b64, at
         import re
         from dotenv import load_dotenv
         from question_db import QuestionDB
-        import config 
+        from core import config
         
         # 强制重新加载环境变量
         load_dotenv(override=True)

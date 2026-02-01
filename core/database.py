@@ -10,7 +10,7 @@ import json
 import sys
 import threading
 from contextlib import contextmanager
-from settings_utils import get_user_data_dir
+from core.settings_utils import get_user_data_dir
 
 DB_FILE = "user_progress.db"
 

@@ -1,7 +1,7 @@
 from typing import List, Dict, Optional, Tuple, Any
 import json
 from openai import OpenAI
-from config import (
+from core.config import (
     OPENAI_API_KEY,
     OPENAI_API_BASE,
     MODEL_NAME,
@@ -14,7 +14,7 @@ from config import (
     QUIZ_CONTEXT_LENGTH,
     get_openai_client,
 )
-from vector_store import VectorStore
+from core.vector_store import VectorStore
 import re
 import random
 import concurrent.futures
@@ -420,7 +420,7 @@ JSON格式模板：
     def generate_outline(self) -> str:
         """根据知识库生成复习大纲"""
         # 导入 KBManager 获取文件大小
-        from kb_manager import KBManager
+        from core.kb_manager import KBManager
         kb_manager = KBManager()
         
         # 获取知识库文件总大小（字节）

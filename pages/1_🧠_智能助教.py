@@ -31,9 +31,9 @@ except Exception as e:
 
 import streamlit.components.v1 as components
 try:
-    from kb_manager import KBManager
-    import ui_components
-    from rag_agent import RAGAgent
+    from core.kb_manager import KBManager
+    from core import ui_components
+    from core.rag_agent import RAGAgent
 except ImportError as e:
     st.error(f"❌ CRITICAL IMPORT ERROR: {e}")
     st.info("Check the debug info above to see the search paths.")
@@ -182,7 +182,7 @@ if st.session_state.messages and st.session_state.messages[-1]["role"] == "user"
             # 使用流式输出
             with st.spinner("思考中..."):
                 # 构建消息
-                from rag_agent import RAGAgent
+                from core.rag_agent import RAGAgent
                 
                 # 准备上下文
                 if is_simple_answer:

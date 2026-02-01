@@ -10,7 +10,7 @@ import os
 import uuid
 import time
 import sqlite3
-from database import get_connection, init_db, serialize_options, deserialize_options, serialize_question_data, deserialize_question_data
+from core.database import get_connection, init_db, serialize_options, deserialize_options, serialize_question_data, deserialize_question_data
 
 DB_FILE = "data/user_progress.db"
 

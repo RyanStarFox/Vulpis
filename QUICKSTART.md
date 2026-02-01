@@ -18,14 +18,14 @@
 
 前往本项目的 [Releases 页面](../../releases) 下载适配您系统的最新版本：
 
-- **Windows**: 下载 `.msi` 安装包或 `.exe` 绿色版
+- **Windows**: 下载 `.exe` 安装包
 - **macOS**: 下载 `.dmg` 镜像文件
 
 ### 2. 安装与启动
 
 - **Windows**: 双击安装包，跟随指引完成安装。并在桌面或开始菜单中找到 **Vulpis** 启动。
 - **macOS**: 打开 `.dmg` 文件，将 Vulpis 图标拖入 `Applications` 文件夹，在启动台打开即可。
-  - _注意：首次打开如提示"无法验证开发者"，请前往 `系统设置 > 隐私与安全性`，在下方点击 `仍要打开`。_
+  - _注意：首次打开如提示"无法验证开发者"，请前往 `系统设置 > 隐私与安全性`，在下方点击 `仍要打开`，或者在终端中运行代码 `sudo xattr -d com.apple.quarantine /Applications/Vulpis.app`并按照提示输入密码。_
 
 ### 3. 首次配置
 
@@ -91,14 +91,23 @@ streamlit run app.py
 
 在 **"⚙️ 系统设置"** -> **"🤖 AI模型配置"** 中填入大模型参数。本项目完全兼容 OpenAI 接口格式，支持 GPT-4、通义千问 (Qwen)、智谱 GLM 等。
 
-- **推荐配置 (阿里百炼/Qwen)**:
+- **以阿里云百炼/Qwen为例**:
   - **模型名称**: `qwen-plus` 或 `qwen-max`
   - **API Key**: `sk-xxxxxxxx...`
   - **Base URL**: `https://dashscope.aliyuncs.com/compatible-mode/v1`
 
+各个平台请参见官方文档
+
+- [DeepSeek开放平台](https://platform.deepseek.com/)
+- [智谱清言开放平台](https://bigmodel.cn)
+- [阿里云百炼平台](https://bailian.console.aliyun.com/)
+- [MiniMax开放平台](https://platform.minimaxi.com/)
+- [Kimi开放平台](https://platform.moonshot.cn)
+- [火山引擎](https://www.volcengine.com/)
+
 ### 2. 工具配置 (Pandoc)
 
-如果您需要使用 **导出大纲为 PDF** 的功能，需要系统安装 [Pandoc](https://pandoc.org/installing.html)。
+如果您需要使用 **导出大纲为 PDF 和 DOCX** 的功能，需要系统安装 [Pandoc](https://pandoc.org/installing.html)。
 
 1. 安装 Pandoc 后，进入设置页面的 **"🛠️ 工具配置"** 标签。
 2. 点击 **"🔍 自动检测"** 按钮。

@@ -4,7 +4,7 @@ from openai import OpenAI
 from dotenv import load_dotenv
 
 # 数据目录配置
-from settings_utils import get_user_data_dir
+from core.settings_utils import get_user_data_dir
 
 # Use user data directory for all persistent data
 user_data_dir = get_user_data_dir()
@@ -42,7 +42,7 @@ IMAGE_CAPTION_MODEL = os.getenv("IMAGE_CAPTION_MODEL", "")
 
 
 # 数据目录配置
-from settings_utils import get_user_data_dir
+from core.settings_utils import get_user_data_dir
 
 # Use user data directory for all persistent data
 user_data_dir = get_user_data_dir()

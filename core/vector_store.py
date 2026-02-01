@@ -6,7 +6,7 @@ from chromadb.config import Settings
 from openai import OpenAI
 from tqdm import tqdm
 
-from config import (
+from core.config import (
     VECTOR_DB_PATH,
     COLLECTION_NAME,
     OPENAI_EMBEDDING_MODEL,
@@ -18,11 +18,12 @@ from config import (
     get_openai_client
 )
 import hashlib
+import pickle
 from rank_bm25 import BM25Okapi
 import jieba
 from chromadb.utils import embedding_functions
 from datetime import datetime
-from settings_utils import get_user_data_dir
+from core.settings_utils import get_user_data_dir
 
 class VectorStore:
 
@@ -63,8 +64,16 @@ class VectorStore:
             name=self.safe_collection_name, metadata={"description": "课程材料向量数据库", "original_name": collection_name}
         )
         
+        # BM25 Cache Path setup
+        cache_dir = os.path.join(data_dir, "bm25_cache")
+        if not os.path.exists(cache_dir):
+            os.makedirs(cache_dir, exist_ok=True)
+        self.bm25_cache_path = os.path.join(cache_dir, f"{self.safe_collection_name}.pkl")
+
         # 混合检索初始化
         self.enable_hybrid = ENABLE_HYBRID_SEARCH
+        print(f"[VectorStore] 初始化完成。混合检索(Hybrid Search): {self.enable_hybrid}")
+        
         self.bm25 = None
         self.doc_ids = []
         self.doc_contents = []
@@ -73,27 +82,91 @@ class VectorStore:
         if self.enable_hybrid:
             self._build_bm25_index()
 
-    def _build_bm25_index(self):
-        """构建BM25索引"""
+    def _clear_bm25_cache(self):
+        """清除本地 BM25 缓存文件"""
         try:
-            # 获取所有文档
-            # 注意：对于非常大的知识库，这可能会比较慢，但在本项目规模下是可以接受的
+            if os.path.exists(self.bm25_cache_path):
+                os.remove(self.bm25_cache_path)
+        except Exception as e:
+            print(f"Warning: Failed to clear BM25 cache: {e}")
+
+    def _build_bm25_index(self, force_rebuild=False):
+        """构建BM25索引 (支持持久化缓存)"""
+        try:
+            print(f"[BM25] [{self.safe_collection_name}] 开始初始化索引流程...")
+            
+            # 1. 尝试从缓存加载
+            if not force_rebuild:
+                print(f"[BM25] 正在检查缓存文件: {self.bm25_cache_path}")
+                if os.path.exists(self.bm25_cache_path):
+                    try:
+                        print(f"[BM25] ✅ 发现缓存文件，正在加载...")
+                        start_load = datetime.now()
+                        with open(self.bm25_cache_path, "rb") as f:
+                            cache_data = pickle.load(f)
+                        
+                        # 校验缓存有效性
+                        current_count = self.collection.count()
+                        cache_count = len(cache_data["ids"])
+                        
+                        if cache_count == current_count:
+                            self.bm25 = cache_data["bm25"]
+                            self.doc_ids = cache_data["ids"]
+                            self.doc_contents = cache_data["contents"]
+                            self.doc_metadatas = cache_data["metadatas"]
+                            print(f"[BM25] ✅ 缓存加载成功！耗时: {datetime.now() - start_load}")
+                            print(f"       包含 {len(self.doc_contents)} 条文档。")
+                            return
+                        else:
+                            print(f"[BM25] ⚠️ 缓存失效: 缓存文档数({cache_count}) != 当前数据库文档数({current_count})")
+                            print("[BM25] 触发强制重建...")
+                    except Exception as e:
+                        print(f"[BM25] ❌ 缓存加载出错: {e}，将触发重建...")
+                else:
+                    print(f"[BM25] ❌ 未找到缓存文件，准备开始构建...")
+            else:
+                 print(f"[BM25] 收到强制重建指令...")
+
+            # 2. 从数据库构建
+            print(f"[BM25] 开始从向量数据库读取所有文档 (可能需要几秒钟)...")
+            start_read = datetime.now()
             all_docs = self.collection.get(include=["documents", "metadatas"])
             
             if not all_docs["ids"]:
-                print("BM25: 知识库为空，跳过索引构建")
+                print("[BM25] ⚠️ 知识库为空，跳过索引构建")
+                self.bm25 = None
                 return
                 
             self.doc_ids = all_docs["ids"]
             self.doc_contents = all_docs["documents"]
             self.doc_metadatas = all_docs["metadatas"]
+            print(f"[BM25] 文档读取完成！共 {len(self.doc_contents)} 条，耗时: {datetime.now() - start_read}")
             
-            # 分词
+            print(f"[BM25] 开始分词并构建倒排索引...")
+            start_build = datetime.now()
             tokenized_corpus = [list(jieba.cut(doc)) for doc in self.doc_contents]
             self.bm25 = BM25Okapi(tokenized_corpus)
-            print(f"BM25 索引构建完成，共 {len(self.doc_contents)} 条文档")
+            print(f"[BM25] 内存索引构建完成，耗时: {datetime.now() - start_build}")
+            
+            # 3. 保存缓存
+            try:
+                print(f"[BM25] 正在将缓存写入磁盘 (首次写入较慢，请耐心等待)...")
+                start_save = datetime.now()
+                with open(self.bm25_cache_path, "wb") as f:
+                    cache_data = {
+                        "bm25": self.bm25,
+                        "ids": self.doc_ids,
+                        "contents": self.doc_contents,
+                        "metadatas": self.doc_metadatas
+                    }
+                    pickle.dump(cache_data, f)
+                print(f"[BM25] ✅ 缓存写入成功！耗时: {datetime.now() - start_save}")
+                print(f"[BM25] 🎉 索引构建全流程结束。")
+            except Exception as e:
+                print(f"[BM25] ❌ 缓存写入失败: {e}")
+
         except Exception as e:
-            print(f"BM25 索引构建失败: {e}")
+            print(f"[BM25] ❌ 索引构建严重失败: {e}")
             self.enable_hybrid = False
 
     def get_embedding(self, text: str) -> List[float]:
@@ -182,10 +255,10 @@ class VectorStore:
             )
             print(f"\n成功添加 {len(documents)} 个文档块到向量数据库")
             
-            # 重建 BM25 索引（如果启用了混合检索）
             if self.enable_hybrid:
                 print("正在更新 BM25 索引...")
-                self._build_bm25_index()
+                self._clear_bm25_cache() # 强制清除缓存
+                self._build_bm25_index(force_rebuild=True)
 
     def search(self, query: str, top_k: int = TOP_K) -> Dict:
         """搜索相关文档 (支持混合检索)"""
@@ -287,6 +360,10 @@ class VectorStore:
 
         try:
             self.chroma_client.delete_collection(name=safe_name)
+            # Remove BM25 Cache
+            cache_path = os.path.join(os.path.dirname(self.bm25_cache_path), f"{safe_name}.pkl")
+            if os.path.exists(cache_path):
+                os.remove(cache_path)
             print(f"Collection {collection_name} (safe: {safe_name}) 已删除")
         except Exception as e:
             print(f"删除 Collection {collection_name} 失败 (可能不存在): {e}")
@@ -304,6 +381,7 @@ class VectorStore:
             metadata={"description": "课程向量数据库", "original_name": self.original_collection_name}
         )
         print("向量数据库已清空")
+        self._clear_bm25_cache()
 
     def get_collection_count(self) -> int:
         """获取collection中的文档数量"""
@@ -338,7 +416,8 @@ class VectorStore:
             
             # 重建 BM25 索引
             if self.enable_hybrid:
-                self._build_bm25_index()
+                self._clear_bm25_cache()
+                self._build_bm25_index(force_rebuild=True)
             
             return deleted_count
         except Exception as e:
@@ -360,7 +439,8 @@ class VectorStore:
             
             # Rebuild BM25 if needed
             if self.enable_hybrid:
-                self._build_bm25_index()
+                self._clear_bm25_cache()
+                self._build_bm25_index(force_rebuild=True)
                 
             return len(doc_ids)
         except Exception as e:

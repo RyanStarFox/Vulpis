@@ -9,8 +9,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import streamlit.components.v1 as components
 import time
-from kb_manager import KBManager
-import ui_components
+from core.kb_manager import KBManager
+from core import ui_components
 
 
 # Inject JS for keyboard shortcut (Cmd/Ctrl + ,)

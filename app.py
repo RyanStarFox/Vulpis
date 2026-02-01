@@ -1,4 +1,6 @@
 import streamlit as st
+
+
 import os
 import sys
 import socket
@@ -13,12 +15,12 @@ mimetypes.add_type('text/css', '.css')
 # --- PyInstaller Hooks ---
 # Force PyInstaller to bundle these modules (referenced in pages/)
 try:
-    import kb_manager
-    import rag_agent
-    import question_db
-    import text_splitter
-    import document_loader
-    import vector_store
+    from core import kb_manager
+    from core import rag_agent
+    from core import question_db
+    from core import text_splitter
+    from core import document_loader
+    from core import vector_store
     
     # Document parsers (implicit dependencies)
     import docx2txt
@@ -45,7 +47,8 @@ if __name__ == "__main__":
     run_via_cli = "--run-via-cli" in sys.argv
     
     # If we are the MAIN executable (not inside Streamlit yet) and haven't set the flag:
-    if not run_via_cli:
+    # ONLY RUN THIS IF FROZEN (PyInstaller) to avoid conflict with `streamlit run app.py` in dev.
+    if not run_via_cli and getattr(sys, 'frozen', False):
         from streamlit.web import cli as stcli
         
         # Resolve the current script path properly for PyInstaller
@@ -98,15 +101,30 @@ document.addEventListener('keydown', function(e) {
 </script>
 """, height=0, width=0)
 
+import os
+from PIL import Image
+icon_path = os.path.join(os.path.dirname(__file__), "assets", "logo.png")
+app_icon = "assets/logo.png"
+
+# Try loading as Image object (best for favicon per docs)
+if os.path.exists(icon_path):
+    try:
+        app_icon = Image.open(icon_path)
+    except Exception as e:
+        print(f"Error loading icon: {e}")
+
 st.set_page_config(
     page_title="Vulpis",
-    page_icon="logo.png",
+    page_icon=app_icon,
     layout="wide",
     initial_sidebar_state="collapsed"  # 默认隐藏侧边栏
 )
 
-import ui_components
+print("[App] ✅ 页面配置完成，准备渲染UI...", flush=True)
+
+from core import ui_components
 ui_components.render_sidebar()
+print("[App] 🎨 侧边栏渲染完成，等待用户交互...", flush=True)
 
 # --- Custom CSS for "Card" Style (Dark Mode Adapted) ---
 # 1. Inject sidebar CSS separately (No f-string conflict)
@@ -295,7 +313,7 @@ col_left, col_mid, col_right = st.columns([1, 8, 1], vertical_alignment="center"
 with col_mid:
     import base64
     try:
-        with open("logo.png", "rb") as f:
+        with open("assets/logo.png", "rb") as f:
             encoded_logo = base64.b64encode(f.read()).decode()
         st.markdown(f"""
             <div style="display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 0.5rem; width: 100%;">
@@ -314,8 +332,8 @@ st.markdown("---")
 
 # --- System Check ---
 # --- System Check ---
-import config
-import settings_utils
+from core import config
+from core import settings_utils
 
 # Get .env path from settings_utils (Source of Truth)
 user_data_dir = settings_utils.get_user_data_dir()

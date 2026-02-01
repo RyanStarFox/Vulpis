@@ -9,11 +9,11 @@ sys.path.append(os.getcwd())
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import streamlit.components.v1 as components
-from kb_manager import KBManager
-import ui_components
-from rag_agent import RAGAgent
+from core.kb_manager import KBManager
+from core import ui_components
+from core.rag_agent import RAGAgent
 
-from question_db import QuestionDB # Import DB
+from core.question_db import QuestionDB # Import DB
 
 # Inject JS for keyboard shortcut (Cmd/Ctrl + ,)
 components.html("""

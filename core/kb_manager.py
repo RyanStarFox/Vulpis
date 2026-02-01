@@ -1,9 +1,9 @@
 import os
 import shutil
-from document_loader import DocumentLoader
-from text_splitter import TextSplitter
-from vector_store import VectorStore
-from config import DATA_DIR, CHUNK_SIZE, CHUNK_OVERLAP, SIZE_ERROR, OVERLAP_ERROR
+from core.document_loader import DocumentLoader
+from core.text_splitter import TextSplitter
+from core.vector_store import VectorStore
+from core.config import DATA_DIR, CHUNK_SIZE, CHUNK_OVERLAP, SIZE_ERROR, OVERLAP_ERROR
 
 class KBManager:
     def __init__(self, base_dir=DATA_DIR):

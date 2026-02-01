@@ -10,11 +10,11 @@ sys.path.append(os.getcwd())
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import streamlit.components.v1 as components
-from rag_agent import RAGAgent
-from config import EXERCISE_TOP_K, EXERCISE_TOP_K_TOPIC
-import ui_components
-from kb_manager import KBManager
-from question_db import QuestionDB
+from core.rag_agent import RAGAgent
+from core.config import EXERCISE_TOP_K, EXERCISE_TOP_K_TOPIC
+from core import ui_components
+from core.kb_manager import KBManager
+from core.question_db import QuestionDB
 
 # Inject JS for keyboard shortcut (Cmd/Ctrl + ,)
 components.html("""
@@ -186,71 +186,71 @@ if st.session_state.quiz_state == "config":
         
         submitted = st.form_submit_button("🚀 开始练习", type="primary")
         
-        if submitted:
-            # Check KB status before starting
-            with st.spinner("正在检查知识库状态..."):
-                temp_agent = RAGAgent(kb_name=selected_kb)
-                count = temp_agent.vector_store.get_collection_count()
-                
-                # Auto-vectorization check
-                if count == 0:
-                    files = kb_manager.list_files(selected_kb)
-                    if files:
-                        st.info(f"📚 检测到知识库 '{selected_kb}' 尚未向量化，正在首次处理，请稍候...")
-                        progress_text = st.empty()
-                        kb_manager.rebuild_kb_index(selected_kb)
-                        st.success("✅ 向量化完成！")
-                        # Re-init agent
-                        temp_agent = RAGAgent(kb_name=selected_kb)
-                    else:
-                        st.error("⚠️ 该知识库为空，请先在【知识库管理】中上传文档。")
-                        st.stop()
+    if submitted:
+        # Check KB status before starting
+        with st.spinner("正在检查知识库状态..."):
+            temp_agent = RAGAgent(kb_name=selected_kb)
+            count = temp_agent.vector_store.get_collection_count()
+            
+            # Auto-vectorization check
+            if count == 0:
+                files = kb_manager.list_files(selected_kb)
+                if files:
+                    st.info(f"📚 检测到知识库 '{selected_kb}' 尚未向量化，正在首次处理，请稍候...")
+                    progress_text = st.empty()
+                    kb_manager.rebuild_kb_index(selected_kb)
+                    st.success("✅ 向量化完成！")
+                    # Re-init agent
+                    temp_agent = RAGAgent(kb_name=selected_kb)
+                else:
+                    st.error("⚠️ 该知识库为空，请先在【知识库管理】中上传文档。")
+                    st.stop()
 
-            st.session_state.quiz_config = {
-                "kb": selected_kb,
-                "type": q_type_str,
-                "format": format_str,
-                "count": num_questions,
-                "options": num_options,
-                "blanks": num_blanks,
-                "topic": topic_refinement if topic_refinement else "Core Concepts and Key Principles"
-            }
-            
-            # Initialize Agent
-            with st.spinner("正在加载智能助教..."):
-                agent = RAGAgent(kb_name=selected_kb)
-                st.session_state.quiz_agent = agent
-            
-            # Generate Questions
-            status_text = st.empty()
-            format_name = "选择题" if format_str == "multiple_choice" else "填空题"
-            status_text.text(f"正在并行生成 {num_questions} 道{format_name}，请稍候...")
-            
-            # Use batch generation with randomization and parallelism
-            if topic_refinement:
-                 current_pool_size = EXERCISE_TOP_K_TOPIC
-            else:
-                 current_pool_size = EXERCISE_TOP_K
-                 
-            questions = agent.generate_quiz_batch(
-                count=num_questions, 
-                topic=st.session_state.quiz_config["topic"], 
-                q_type=st.session_state.quiz_config["type"],
-                question_format=format_str,
-                num_options=num_options,
-                num_blanks=num_blanks,
-                pool_size=current_pool_size
-            )
-            
-            if not questions:
-                st.error("生成题目失败，请重试或检查知识库内容。")
-            else:
-                st.session_state.quiz_questions = questions
-                st.session_state.current_q_index = 0
-                st.session_state.user_answers = {}
-                st.session_state.score = 0
-                st.session_state.quiz_state = "quizzing"
-                st.rerun()
+        st.session_state.quiz_config = {
+            "kb": selected_kb,
+            "type": q_type_str,
+            "format": format_str,
+            "count": num_questions,
+            "options": num_options,
+            "blanks": num_blanks,
+            "topic": topic_refinement if topic_refinement else "Core Concepts and Key Principles"
+        }
+        
+        # Initialize Agent
+        with st.spinner("正在加载智能助教..."):
+            agent = RAGAgent(kb_name=selected_kb)
+            st.session_state.quiz_agent = agent
+        
+        # Generate Questions
+        status_text = st.empty()
+        format_name = "选择题" if format_str == "multiple_choice" else "填空题"
+        status_text.text(f"正在并行生成 {num_questions} 道{format_name}，请稍候...")
+        
+        # Use batch generation with randomization and parallelism
+        if topic_refinement:
+             current_pool_size = EXERCISE_TOP_K_TOPIC
+        else:
+             current_pool_size = EXERCISE_TOP_K
+             
+        questions = agent.generate_quiz_batch(
+            count=num_questions, 
+            topic=st.session_state.quiz_config["topic"], 
+            q_type=st.session_state.quiz_config["type"],
+            question_format=format_str,
+            num_options=num_options,
+            num_blanks=num_blanks,
+            pool_size=current_pool_size
+        )
+        
+        if not questions:
+            st.error("生成题目失败，请重试或检查知识库内容。")
+        else:
+            st.session_state.quiz_questions = questions
+            st.session_state.current_q_index = 0
+            st.session_state.user_answers = {}
+            st.session_state.score = 0
+            st.session_state.quiz_state = "quizzing"
+            st.rerun()
 
 # --- Phase 2: Quizzing ---
 elif st.session_state.quiz_state == "quizzing":

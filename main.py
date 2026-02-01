@@ -1,7 +1,7 @@
 import os
-from rag_agent import RAGAgent
+from core.rag_agent import RAGAgent
 
-from config import VECTOR_DB_PATH, MODEL_NAME
+from core.config import VECTOR_DB_PATH, MODEL_NAME
 
 
 def main():

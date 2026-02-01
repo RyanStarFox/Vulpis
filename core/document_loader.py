@@ -7,7 +7,7 @@ from pptx.enum.shapes import MSO_SHAPE_TYPE
 import base64
 import io
 from openai import OpenAI
-from config import DATA_DIR, OPENAI_API_KEY, OPENAI_API_BASE, ENABLE_IMAGE_CAPTIONING, IMAGE_CAPTION_MODEL, VL_API_KEY, VL_API_BASE, get_openai_client
+from core.config import DATA_DIR, OPENAI_API_KEY, OPENAI_API_BASE, ENABLE_IMAGE_CAPTIONING, IMAGE_CAPTION_MODEL, VL_API_KEY, VL_API_BASE, get_openai_client
 
 class DocumentLoader:
     def __init__(

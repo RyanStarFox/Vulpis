@@ -1,15 +1,18 @@
 import streamlit as st
 import os
 import base64
-import settings_utils
+from core import settings_utils
+
+
+
 
 @st.dialog("⚙️ 系统设置", width="large")
 def settings_dialog():
     import os
-    import config
+    from core import config
     from openai import OpenAI
     current = settings_utils.load_settings_from_env()
-    
+
     # Defaults in case env is empty
     def get_val(key, default=""): return current.get(key, default)
     
@@ -37,7 +40,7 @@ def settings_dialog():
                 else:
                     try:
                         with st.spinner(f"正在测试 {new_settings['MODEL_NAME']} ..."):
-                            import config
+                            from core import config
                             client = config.get_openai_client(api_key=new_settings["OPENAI_API_KEY"], base_url=new_settings["OPENAI_API_BASE"])
                             client.chat.completions.create(
                                 model=new_settings["MODEL_NAME"],
@@ -93,7 +96,7 @@ def settings_dialog():
                 else:
                     try:
                         with st.spinner(f"正在测试 {wm} ..."):
-                            import config
+                            from core import config
                             client = config.get_openai_client(api_key=wk, base_url=wb)
                             client.chat.completions.create(
                                 model=wm,
@@ -167,8 +170,8 @@ def settings_dialog():
             if st.button("🔍 自动检测", key="btn_auto_detect_pandoc", help="扫描系统常见路径查找 Pandoc"):
                 found = detect_pandoc_path()
                 if found:
-                    st.session_state["detected_pandoc_path"] = found
-                    st.rerun()
+                    st.session_state["s_pandoc_path"] = found
+                    st.success(f"✅ 已检测到 Pandoc 路径: `{found}`")
                 else:
                     st.toast("⚠️ 未检测到 Pandoc，请手动指定或确认已安装。", icon="❌")
         
@@ -218,7 +221,7 @@ def settings_dialog():
         for k, v in new_settings.items():
             os.environ[k] = v
         import importlib
-        import config
+        from core import config
         importlib.reload(config)
         st.success("配置已保存并生效！")
         st.rerun()
