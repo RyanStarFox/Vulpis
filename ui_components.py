@@ -130,32 +130,74 @@ def settings_dialog():
         st.caption("PDF生成依赖 Pandoc。通常情况下系统会自动找到，如果报错，请在此手动指定路径。")
         st.markdown("**Pandoc 安装指南**: [pandoc.org/installing.html](https://pandoc.org/installing.html) (如无法打开请手动复制链接)")
         
-        new_settings["PANDOC_PATH"] = st.text_input(
-            "Pandoc 可执行文件路径", 
-            value=get_val("PANDOC_PATH", ""), 
-            placeholder="例如: /usr/local/bin/pandoc 或 C:\\Program Files\\Pandoc\\pandoc.exe",
-            help="留空则使用系统默认 PATH 查找",
-            key="s_pandoc_path"
-        )
+        # Helper function for detection
+        def detect_pandoc_path():
+            import platform
+            import shutil
+            
+            # 1. Try system PATH
+            which_path = shutil.which("pandoc")
+            if which_path: return which_path
+            
+            # 2. Try common paths
+            system = platform.system()
+            common_paths = []
+            if system == "Windows":
+                common_paths = [
+                    r"C:\Program Files\Pandoc\pandoc.exe",
+                    r"C:\Program Files (x86)\Pandoc\pandoc.exe",
+                    os.path.expandvars(r"%LOCALAPPDATA%\Pandoc\pandoc.exe"),
+                    os.path.expandvars(r"%USERPROFILE%\AppData\Local\Pandoc\pandoc.exe")
+                ]
+            else:
+                common_paths = [
+                    "/usr/bin/pandoc", 
+                    "/usr/local/bin/pandoc", 
+                    "/opt/homebrew/bin/pandoc",
+                    "/Library/TeX/texbin/pandoc"
+                ]
+            
+            for p in common_paths:
+                if os.path.exists(p): return p
+            return None
+
+        col_p1, col_p2 = st.columns([4, 1], vertical_alignment="bottom")
+        
+        with col_p2:
+            if st.button("🔍 自动检测", key="btn_auto_detect_pandoc", help="扫描系统常见路径查找 Pandoc"):
+                found = detect_pandoc_path()
+                if found:
+                    st.session_state["detected_pandoc_path"] = found
+                    st.toast(f"✅ 已检测到 Pandoc: {found}", icon="🎉")
+                else:
+                    st.toast("⚠️ 未检测到 Pandoc，请手动指定或确认已安装。", icon="❌")
+        
+        with col_p1:
+            # Priority: 1. Auto-detected in this session, 2. Existing config env var, 3. Empty
+            current_val = st.session_state.get("detected_pandoc_path", get_val("PANDOC_PATH", ""))
+            
+            new_settings["PANDOC_PATH"] = st.text_input(
+                "Pandoc 可执行文件路径", 
+                value=current_val, 
+                placeholder="例如: /usr/local/bin/pandoc 或 C:\\Program Files\\Pandoc\\pandoc.exe",
+                help="留空则使用系统默认 PATH 查找",
+                key="s_pandoc_path"
+            )
         
         if st.button("🧪 测试 Pandoc 路径", key="btn_test_pandoc"):
             import subprocess
             import os
             
-            # Update PATH for the test process to match export logic
-            common_paths = [
-                "/opt/homebrew/bin", 
-                "/usr/local/bin",    
-                "/Library/TeX/texbin" 
-            ]
-            for p in common_paths:
-                if os.path.exists(p) and p not in os.environ["PATH"]:
-                    os.environ["PATH"] += os.pathsep + p
-
             path_to_test = new_settings["PANDOC_PATH"] or "pandoc"
             try:
                 # Construct command based on whether it is a full path or command name
                 cmd = [path_to_test, "--version"]
+                
+                # Special handling for Windows environment variable expansion if needed
+                if os.name == 'nt' and '%' in path_to_test:
+                    path_to_test = os.path.expandvars(path_to_test)
+                    cmd = [path_to_test, "--version"]
+
                 result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
                 if result.returncode == 0:
                     version_line = result.stdout.split('\n')[0]
