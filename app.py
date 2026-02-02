@@ -76,11 +76,8 @@ st.set_page_config(
     initial_sidebar_state="collapsed"  # 默认隐藏侧边栏
 )
 
-print("[App] ✅ 页面配置完成，准备渲染UI...", flush=True)
-
 from core import ui_components
 ui_components.render_sidebar()
-print("[App] 🎨 侧边栏渲染完成，等待用户交互...", flush=True)
 
 # --- Custom CSS for "Card" Style (Dark Mode Adapted) ---
 # 1. Inject sidebar CSS separately (No f-string conflict)
