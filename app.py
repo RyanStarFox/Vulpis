@@ -58,8 +58,19 @@ if os.path.exists(icon_path):
     except Exception as e:
         print(f"Error loading icon: {e}")
 
-# --- Main Execution Guard for Windows/PyInstaller ---
-if __name__ == "__main__":
+# --- Context Guard for Windows/Mac/PyInstaller ---
+# We use get_script_run_ctx() to ensure we are strictly inside a Streamlit execution loop.
+# This prevents "missing ScriptRunContext" errors when the script is imported or run directly via python.
+try:
+    from streamlit.runtime.scriptrunner.script_run_context import get_script_run_ctx
+except ImportError:
+    # Fallback or different version structure
+    try:
+        from streamlit.runtime.scriptrunner import get_script_run_ctx
+    except ImportError:
+        get_script_run_ctx = lambda: None
+
+if get_script_run_ctx():
     st.set_page_config(
         page_title="Vulpis",
         page_icon=app_icon,
