@@ -38,7 +38,8 @@ def run_launcher():
     app_py = os.path.join(app_dir, 'app.py')
     
     port = find_port()
-    # print(f"Starting Streamlit on port {port}...", flush=True)
+    # CRITICAL: This specific string is regex-matched by Tauri Rust code to know the backend is ready and which port to use.
+    print(f"PYTHON_BACKEND_PORT={port}", flush=True)
     
     sys.argv = [
         'streamlit',
