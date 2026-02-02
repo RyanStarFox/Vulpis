@@ -197,13 +197,14 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=True,
-    upx=True,
-    console=False,  # No console window
+    upx=False,
+    console=True,  # Enable console for debugging
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    contents_directory='.',
 )
 
 coll = COLLECT(
@@ -211,7 +212,7 @@ coll = COLLECT(
     a.binaries,
     a.datas,
     strip=True,
-    upx=True,
+    upx=False,
     upx_exclude=[],
     name='python-backend',
 )
