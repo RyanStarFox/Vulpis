@@ -3,10 +3,15 @@ import os
 import sys
 import socket
 import mimetypes
-import threading
+from PIL import Image
+import streamlit.components.v1 as components 
+from streamlit.web import cli as stcli
 
-# --- DEBUG ALLOCATION ---
-# This block helps diagnose Windows/PyInstaller execution flow
+# Fix for javascript files returning text/plain on Windows
+mimetypes.add_type('application/javascript', '.js')
+mimetypes.add_type('text/css', '.css')
+
+# --- Context Helper ---
 try:
     from streamlit.runtime.scriptrunner.script_run_context import get_script_run_ctx
 except ImportError:
@@ -15,84 +20,55 @@ except ImportError:
     except ImportError:
         get_script_run_ctx = lambda: None
 
-ctx = get_script_run_ctx()
-debug_msg = (
-    f"\n========== APP.PY LOADED ==========\n"
-    f"PID: {os.getpid()}\n"
-    f"Thread: {threading.current_thread().name}\n"
-    f"__name__: {__name__}\n"
-    f"Context Present: {ctx is not None}\n"
-    f"Sys Argv: {sys.argv}\n"
-    f"===================================\n"
-)
-print(debug_msg, flush=True)
-# ------------------------
+def find_port():
+    port = 8501
+    for i in range(20):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            if s.connect_ex(('127.0.0.1', port + i)) != 0:
+                return port + i
+    return port
 
-
-# Fix for javascript files returning text/plain on Windows
-mimetypes.add_type('application/javascript', '.js')
-mimetypes.add_type('text/css', '.css')
-
-
-
-# --- PyInstaller Hooks ---
-# Force PyInstaller to bundle these modules (referenced in pages/)
-if False:
-    from core import kb_manager
-    from core import rag_agent
-    from core import question_db
-    from core import text_splitter
-    from core import document_loader
-    from core import vector_store
+def run_launcher():
+    app_dir = os.path.dirname(os.path.abspath(__file__))
+    if getattr(sys, 'frozen', False):
+        if hasattr(sys, '_MEIPASS'):
+             app_dir = sys._MEIPASS
     
-    # Document parsers (implicit dependencies)
-    import docx2txt
-    import pptx
-    import pdfplumber
-    import pandas
+    # app.py is current file
+    app_py = os.path.join(app_dir, 'app.py')
     
-    # Search algorithm
-    import rank_bm25
-
-# -------------------------
-
-# (Launcher logic moved to launcher.py)
-
-import streamlit.components.v1 as components
-
-
-
-import os
-from PIL import Image
+    port = find_port()
+    # print(f"Starting Streamlit on port {port}...", flush=True)
+    
+    sys.argv = [
+        'streamlit',
+        'run',
+        app_py,
+        '--global.developmentMode=false',
+        f'--server.port={port}',
+        '--server.address=127.0.0.1',
+        '--server.headless=true',
+        '--browser.gatherUsageStats=false',
+    ]
+    sys.exit(stcli.main())
 
 def get_resource_path(relative_path):
     if hasattr(sys, '_MEIPASS'):
         return os.path.join(sys._MEIPASS, relative_path)
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), relative_path)
 
-icon_path = get_resource_path(os.path.join("assets", "logo.png"))
-app_icon = "assets/logo.png"
+def main_ui():
+    icon_path = get_resource_path(os.path.join("assets", "logo.png"))
+    app_icon = "assets/logo.png"
 
-# Try loading as Image object (best for favicon per docs)
-if os.path.exists(icon_path):
-    try:
-        app_icon = Image.open(icon_path)
-    except Exception as e:
-        print(f"Error loading icon: {e}")
+    # Try loading as Image object (best for favicon per docs)
+    if os.path.exists(icon_path):
+        try:
+            app_icon = Image.open(icon_path)
+        except Exception as e:
+            print(f"Error loading icon: {e}")
 
-# --- Context Guard for Windows/Mac/PyInstaller ---
-# We use get_script_run_ctx() to ensure we are strictly inside a Streamlit execution loop.
-# This prevents "missing ScriptRunContext" errors when the script is imported or run directly via python.
-try:
-    from streamlit.runtime.scriptrunner.script_run_context import get_script_run_ctx
-except ImportError:
-    # Fallback or different version structure
-    try:
-        from streamlit.runtime.scriptrunner import get_script_run_ctx
-    except ImportError:
-        get_script_run_ctx = lambda: None
 
-if get_script_run_ctx():
     st.set_page_config(
         page_title="Vulpis",
         page_icon=app_icon,
@@ -436,3 +412,9 @@ if get_script_run_ctx():
 
     st.markdown("---")
     st.caption("© 2025 [CS4314 Project, Developed by RyanStarFox and Zhou Zihan](https://github.com/RyanStarFox/CS4314_NLP_Proj2)")
+
+if __name__ == "__main__":
+    if get_script_run_ctx():
+        main_ui()
+    else:
+        run_launcher()
