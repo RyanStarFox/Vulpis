@@ -1,51 +1,93 @@
+#!/usr/bin/env python3
+"""
+Launcher Script for Desktop App
+Replaces python-backend.py to ensure clean build on GitHub Actions.
+"""
 import os
 import sys
-import socket
-from streamlit.web import cli as stcli
 
-def find_free_port():
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(('', 0))
-        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        return s.getsockname()[1]
+# DEBUG: Force immediate print to confirm execution
+print("🚀 LAUNCHER STARTED! Vulpis is booting...", flush=True)
 
-def get_resource_path(relative_path):
-    if hasattr(sys, '_MEIPASS'):
-        return os.path.join(sys._MEIPASS, relative_path)
-    return os.path.join(os.path.dirname(os.path.abspath(__file__)), relative_path)
-
-if __name__ == "__main__":
-    # 1. Determine path to app.py
-    # In PyInstaller bundle, app.py is in the root of the bundle (sys._MEIPASS)
-    # or inside 'core' depending on how we packed it. 
-    # Based on our spec, app.py is at the root of the bundle.
-    
+def get_app_dir():
+    """Get the directory where the app files are located."""
     if getattr(sys, 'frozen', False):
-        script_path = os.path.join(sys._MEIPASS, "app.py")
+        # Running as compiled executable
+        if hasattr(sys, '_MEIPASS'):
+            return sys._MEIPASS
+        else:
+            exe_dir = os.path.dirname(sys.executable)
+            internal_dir = os.path.join(exe_dir, '_internal')
+            if os.path.exists(internal_dir):
+                return internal_dir
+            return exe_dir
     else:
-        # Dev mode: assume app.py is in parent directory
-        script_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "app.py"))
+        # Running as script
+        return os.path.dirname(os.path.abspath(__file__))
 
-    # 2. Find Port
-    port = find_free_port()
-    print(f"Starting Streamlit App at: {script_path} on port {port}")
-    print(f"PYTHON_BACKEND_PORT={port}")
-    sys.stdout.flush()
+def main():
+    app_dir = get_app_dir()
+    print(f"DEBUG: App Directory resolved to: {app_dir}", flush=True)
+    
+    # Change to app directory
+    os.chdir(app_dir)
+    
+    # Set up environment
+    os.environ['STREAMLIT_SERVER_PORT'] = '8501'
+    os.environ['STREAMLIT_SERVER_ADDRESS'] = '127.0.0.1'
+    os.environ['STREAMLIT_SERVER_HEADLESS'] = 'true'
+    os.environ['STREAMLIT_BROWSER_GATHER_USAGE_STATS'] = 'false'
+    os.environ['STREAMLIT_BROWSER_SERVER_ADDRESS'] = '127.0.0.1'
+    
+    # Find app.py
+    app_py = os.path.join(app_dir, 'app.py')
+    if not os.path.exists(app_py):
+        print(f"CRITICAL ERROR: app.py not found at {app_py}")
+        # Debug listdir
+        try:
+             print(f"Contents of {app_dir}: {os.listdir(app_dir)}", flush=True)
+        except:
+             pass
+        sys.exit(1)
+    
+    print(f"Starting Streamlit from: {app_py}", flush=True)
+    
+    # Find available port
+    import socket
+    def find_available_port(start_port, max_tries=20):
+        for port in range(start_port, start_port + max_tries):
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                if s.connect_ex(('127.0.0.1', port)) != 0:
+                    return port
+        return start_port
 
-    # 3. Construct Arguments
+    port = find_available_port(8501)
+    # CRITICAL: This specific string is regex-matched by Tauri Rust code
+    print(f"PYTHON_BACKEND_PORT={port}", flush=True)
+    
+    # Patch argv for Streamlit
+    # Streamlit reads sys.argv[0] as the script name
     sys.argv = [
-        "streamlit",
-        "run",
-        script_path,
-        "--global.developmentMode=false",
-        f"--server.port={port}",
-        "--server.headless=true",
-        "--server.address=127.0.0.1",
-        "--server.enableCORS=false",
-        "--server.enableXsrfProtection=false",
-        "--server.enableWebsocketCompression=false",
-        "--browser.gatherUsageStats=false",
+        'streamlit',
+        'run',
+        app_py,
+        '--global.developmentMode=false',
+        f'--server.port={port}',
+        '--server.address=127.0.0.1',
+        '--server.headless=true',
+        '--server.enableCORS=false', # Forced to true by logic but we set it
+        '--server.enableXsrfProtection=false',
+        '--browser.gatherUsageStats=false',
     ]
+    
+    print("DEBUG: Calling stcli.main()...", flush=True)
+    
+    try:
+        from streamlit.web import cli as stcli
+        sys.exit(stcli.main())
+    except Exception as e:
+        print(f"CRITICAL ERROR launching Streamlit: {e}", flush=True)
+        sys.exit(1)
 
-    # 4. Launch
-    sys.exit(stcli.main())
+if __name__ == '__main__':
+    main()

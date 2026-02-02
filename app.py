@@ -1,10 +1,33 @@
 import streamlit as st
-
-
 import os
 import sys
 import socket
 import mimetypes
+import threading
+
+# --- DEBUG ALLOCATION ---
+# This block helps diagnose Windows/PyInstaller execution flow
+try:
+    from streamlit.runtime.scriptrunner.script_run_context import get_script_run_ctx
+except ImportError:
+    try:
+        from streamlit.runtime.scriptrunner import get_script_run_ctx
+    except ImportError:
+        get_script_run_ctx = lambda: None
+
+ctx = get_script_run_ctx()
+debug_msg = (
+    f"\n========== APP.PY LOADED ==========\n"
+    f"PID: {os.getpid()}\n"
+    f"Thread: {threading.current_thread().name}\n"
+    f"__name__: {__name__}\n"
+    f"Context Present: {ctx is not None}\n"
+    f"Sys Argv: {sys.argv}\n"
+    f"===================================\n"
+)
+print(debug_msg, flush=True)
+# ------------------------
+
 
 # Fix for javascript files returning text/plain on Windows
 mimetypes.add_type('application/javascript', '.js')
@@ -14,7 +37,7 @@ mimetypes.add_type('text/css', '.css')
 
 # --- PyInstaller Hooks ---
 # Force PyInstaller to bundle these modules (referenced in pages/)
-try:
+if False:
     from core import kb_manager
     from core import rag_agent
     from core import question_db
@@ -30,8 +53,7 @@ try:
     
     # Search algorithm
     import rank_bm25
-except ImportError:
-    pass 
+
 # -------------------------
 
 # (Launcher logic moved to launcher.py)

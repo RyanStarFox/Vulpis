@@ -141,8 +141,11 @@ hiddenimports += [
 ]
 hiddenimports += collect_submodules('tiktoken')
 
+# Get the directory containing the spec file
+spec_dir = os.path.dirname(os.path.abspath(SPEC))
+
 a = Analysis(
-    ['python-backend.py'],
+    [os.path.join(spec_dir, 'launcher.py')],
     pathex=[project_root],
     binaries=binaries, # Pass collected binaries here
     datas=datas,
