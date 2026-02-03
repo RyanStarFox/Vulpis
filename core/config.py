@@ -94,3 +94,58 @@ def get_openai_client(api_key=None, base_url=None):
         kwargs["base_url"] = base_url
     
     return OpenAI(**kwargs)
+
+def reload():
+    """Force reload of all configuration from .env file."""
+    # Declare all globals that need updating
+    global user_data_dir, DATA_DIR, env_path, OPENAI_API_KEY, OPENAI_API_BASE, MODEL_NAME
+    global EMBEDDING_API_KEY, EMBEDDING_API_BASE, OPENAI_EMBEDDING_MODEL
+    global VL_API_KEY, VL_API_BASE, VL_MODEL_NAME
+    global ENABLE_IMAGE_CAPTIONING, IMAGE_CAPTION_MODEL
+    global VECTOR_DB_PATH, COLLECTION_NAME
+    global ENABLE_HYBRID_SEARCH, HYBRID_SEARCH_ALPHA
+    global CHUNK_SIZE, CHUNK_OVERLAP, SIZE_ERROR, OVERLAP_ERROR, MAX_TOKENS
+    global TOP_K, EXERCISE_TOP_K, EXERCISE_TOP_K_TOPIC, QUIZ_CONTEXT_LENGTH, PANDOC_PATH, MEMORY_WINDOW_SIZE
+    
+    # Reload dotenv
+    # Note: load_dotenv doesn't override by default, so we must force override
+    if os.path.exists(env_path):
+        load_dotenv(dotenv_path=env_path, override=True)
+    else:
+        load_dotenv(override=True)
+        
+    # Re-read all variables
+    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+    OPENAI_API_BASE = os.getenv("OPENAI_API_BASE", "")
+    MODEL_NAME = os.getenv("MODEL_NAME", "")
+    
+    EMBEDDING_API_KEY = os.getenv("EMBEDDING_API_KEY", OPENAI_API_KEY)
+    EMBEDDING_API_BASE = os.getenv("EMBEDDING_API_BASE", OPENAI_API_BASE)
+    OPENAI_EMBEDDING_MODEL = os.getenv("OPENAI_EMBEDDING_MODEL", "")
+    
+    VL_API_KEY = os.getenv("VL_API_KEY", OPENAI_API_KEY)
+    VL_API_BASE = os.getenv("VL_API_BASE", OPENAI_API_BASE)
+    VL_MODEL_NAME = os.getenv("VL_MODEL_NAME", "")
+    
+    ENABLE_IMAGE_CAPTIONING = os.getenv("ENABLE_IMAGE_CAPTIONING", "False").lower() == "true"
+    IMAGE_CAPTION_MODEL = os.getenv("IMAGE_CAPTION_MODEL", "")
+    
+    VECTOR_DB_PATH = os.path.join(user_data_dir, "vector_db")
+    COLLECTION_NAME = os.getenv("COLLECTION_NAME", "")
+    
+    ENABLE_HYBRID_SEARCH = os.getenv("ENABLE_HYBRID_SEARCH", "True").lower() == "true"
+    HYBRID_SEARCH_ALPHA = float(os.getenv("HYBRID_SEARCH_ALPHA", "0.5"))
+    
+    CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", "1000"))
+    CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", "200"))
+    SIZE_ERROR = int(os.getenv("SIZE_ERROR", "100"))
+    OVERLAP_ERROR = int(os.getenv("OVERLAP_ERROR", "20"))
+    MAX_TOKENS = int(os.getenv("MAX_TOKENS", "4096"))
+    
+    TOP_K = int(os.getenv("TOP_K", "6"))
+    EXERCISE_TOP_K = int(os.getenv("EXERCISE_TOP_K", "100"))
+    EXERCISE_TOP_K_TOPIC = int(os.getenv("EXERCISE_TOP_K_TOPIC", "30"))
+    QUIZ_CONTEXT_LENGTH = int(os.getenv("QUIZ_CONTEXT_LENGTH", "2000"))
+    PANDOC_PATH = os.getenv("PANDOC_PATH", "")
+    MEMORY_WINDOW_SIZE = int(os.getenv("MEMORY_WINDOW_SIZE", "10"))
+

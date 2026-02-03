@@ -6,17 +6,8 @@ from chromadb.config import Settings
 from openai import OpenAI
 from tqdm import tqdm
 
-from core.config import (
-    VECTOR_DB_PATH,
-    COLLECTION_NAME,
-    OPENAI_EMBEDDING_MODEL,
-    TOP_K,
-    ENABLE_HYBRID_SEARCH,
-    HYBRID_SEARCH_ALPHA,
-    EMBEDDING_API_KEY,
-    EMBEDDING_API_BASE,
-    get_openai_client
-)
+from core import config
+
 import hashlib
 import pickle
 from rank_bm25 import BM25Okapi
@@ -35,7 +26,7 @@ class VectorStore:
         self.persist_directory = os.path.join(data_dir, "chroma_db")
 
         # 初始化OpenAI客户端
-        self.client = get_openai_client(api_key=EMBEDDING_API_KEY, base_url=EMBEDDING_API_BASE)
+        self.client = config.get_openai_client(api_key=config.EMBEDDING_API_KEY, base_url=config.EMBEDDING_API_BASE)
 
         # 初始化ChromaDB
         self.chroma_client = chromadb.PersistentClient(
@@ -71,7 +62,7 @@ class VectorStore:
         self.bm25_cache_path = os.path.join(cache_dir, f"{self.safe_collection_name}.pkl")
 
         # 混合检索初始化
-        self.enable_hybrid = ENABLE_HYBRID_SEARCH
+        self.enable_hybrid = config.ENABLE_HYBRID_SEARCH
         print(f"[VectorStore] 初始化完成。混合检索(Hybrid Search): {self.enable_hybrid}")
         
         self.bm25 = None
@@ -181,7 +172,7 @@ class VectorStore:
         for attempt in range(max_retries):
             try:
                 response = self.client.embeddings.create(
-                    model=OPENAI_EMBEDDING_MODEL,
+                    model=config.OPENAI_EMBEDDING_MODEL,
                     input=text,
                     timeout=current_timeout
                 )
@@ -260,8 +251,11 @@ class VectorStore:
                 self._clear_bm25_cache() # 强制清除缓存
                 self._build_bm25_index(force_rebuild=True)
 
-    def search(self, query: str, top_k: int = TOP_K) -> Dict:
+    def search(self, query: str, top_k: int = None) -> Dict:
         """搜索相关文档 (支持混合检索)"""
+        if top_k is None:
+            top_k = config.TOP_K
+
         if not self.enable_hybrid or not self.bm25:
             # 仅使用向量检索
             embedding = self.get_embedding(query)
@@ -295,7 +289,7 @@ class VectorStore:
         # 使用 RRF 算法: score = alpha * (1 / (k + rank_vec)) + (1 - alpha) * (1 / (k + rank_bm25))
         # k 通常取 60
         rrf_k = 60
-        alpha = HYBRID_SEARCH_ALPHA
+        alpha = config.HYBRID_SEARCH_ALPHA
         
         # 构建文档 ID 到排名的映射
         vec_rank_map = {} # doc_id -> rank (0-based)

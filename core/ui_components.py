@@ -227,6 +227,10 @@ def settings_dialog():
         st.rerun()
 
 def render_sidebar():
+    # Ensure config is fresh on every re-run
+    from core import config
+    config.reload()
+
     # 注入 Javascript 强制移动 Logo 到侧栏最顶部 (比 CSS order 更可靠)
     # 同时处理 "Link Button" 的样式
     # 注入 CSS Hack 将 "app" 改名为 "首页"
