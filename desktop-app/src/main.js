@@ -117,9 +117,8 @@ function appendLog(message, isError = false) {
   logsEl.scrollTop = logsEl.scrollHeight;
   
   // Show logs on first error or if container is not visible during long wait
-  if (isError && logContainer.style.display === 'none') {
-    logContainer.style.display = 'block';
-  }
+  // REMOVED: User requested no log window auto-popup
+
 }
 
 if (listen) {
@@ -154,12 +153,8 @@ if (listen) {
 
 // Start checking when page loads
 document.addEventListener('DOMContentLoaded', () => {
-    // Show logs container after 5 seconds if not connected yet
-    setTimeout(() => {
-        if (logContainer && document.getElementById('loading').style.display !== 'none') {
-            logContainer.style.display = 'block';
-        }
-    }, 5000);
+    // REMOVED: User requested no log window auto-popup
+
 
     // Fetch historical logs from Rust backend
     if (invoke) {
