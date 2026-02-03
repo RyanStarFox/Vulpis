@@ -358,7 +358,7 @@ def main_ui():
             <div class="nav-card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; align-content: center; text-align: center; margin: 0 auto; padding-left: 0 !important; padding-right: 0 !important; width: 100%;">
                 <div class="card-icon" style="margin: 0 auto; text-align: center;">🧠</div>
                 <div class="card-title" style="font-size: 1.2rem; font-weight: 600; text-align: center !important; width: 100%; display: block; margin: 0.5rem 0; max-width: 100%;">智能助教</div>
-                <div class="card-desc" style="font-size: 0.9rem; opacity: 0.8; text-align: center !important; width: 100%; display: block; margin: 0; max-width: 100%;">24h 在线答疑，支持多模态提问与上下文追问</div>
+                <div class="card-desc" style="font-size: 0.9rem; opacity: 0.8; text-align: center !important; width: 100%; display: block; margin: 0; max-width: 100%;">24h 在线答疑</div>
             </div>
         </a>
         """, unsafe_allow_html=True)
@@ -369,7 +369,7 @@ def main_ui():
             <div class="nav-card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; align-content: center; text-align: center; margin: 0 auto; padding-left: 0 !important; padding-right: 0 !important; width: 100%;">
                 <div class="card-icon" style="margin: 0 auto; text-align: center;">📝</div>
                 <div class="card-title" style="font-size: 1.2rem; font-weight: 600; text-align: center !important; width: 100%; display: block; margin: 0.5rem 0; max-width: 100%;">做题练习</div>
-                <div class="card-desc" style="font-size: 0.9rem; opacity: 0.8; text-align: center !important; width: 100%; display: block; margin: 0; max-width: 100%;">自定义题型与数量，AI出题并即时批改解析</div>
+                <div class="card-desc" style="font-size: 0.9rem; opacity: 0.8; text-align: center !important; width: 100%; display: block; margin: 0; max-width: 100%;">AI出题批改解析</div>
             </div>
         </a>
         """, unsafe_allow_html=True)
@@ -380,7 +380,7 @@ def main_ui():
             <div class="nav-card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; align-content: center; text-align: center; margin: 0 auto; padding-left: 0 !important; padding-right: 0 !important; width: 100%;">
                 <div class="card-icon" style="margin: 0 auto; text-align: center;">📓</div>
                 <div class="card-title" style="font-size: 1.2rem; font-weight: 600; text-align: center !important; width: 100%; display: block; margin: 0.5rem 0; max-width: 100%;">错题整理</div>
-                <div class="card-desc" style="font-size: 0.9rem; opacity: 0.8; text-align: center !important; width: 100%; display: block; margin: 0; max-width: 100%;">自动收录错题，支持反复练习与掌握标记</div>
+                <div class="card-desc" style="font-size: 0.9rem; opacity: 0.8; text-align: center !important; width: 100%; display: block; margin: 0; max-width: 100%;">收集、整理、练习</div>
             </div>
         </a>
         """, unsafe_allow_html=True)
@@ -395,7 +395,7 @@ def main_ui():
             <div class="nav-card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; align-content: center; text-align: center; margin: 0 auto; padding-left: 0 !important; padding-right: 0 !important; width: 100%;">
                 <div class="card-icon" style="margin: 0 auto; text-align: center;">📑</div>
                 <div class="card-title" style="font-size: 1.2rem; font-weight: 600; text-align: center !important; width: 100%; display: block; margin: 0.5rem 0; max-width: 100%;">大纲生成</div>
-                <div class="card-desc" style="font-size: 0.9rem; opacity: 0.8; text-align: center !important; width: 100%; display: block; margin: 0; max-width: 100%;">一键提炼知识库核心内容，生成复习大纲</div>
+                <div class="card-desc" style="font-size: 0.9rem; opacity: 0.8; text-align: center !important; width: 100%; display: block; margin: 0; max-width: 100%;">一键提炼知识库核心内容</div>
             </div>
         </a>
         """, unsafe_allow_html=True)
@@ -406,7 +406,7 @@ def main_ui():
             <div class="nav-card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; align-content: center; text-align: center; margin: 0 auto; padding-left: 0 !important; padding-right: 0 !important; width: 100%;">
                 <div class="card-icon" style="margin: 0 auto; text-align: center;">🗂️</div>
                 <div class="card-title" style="font-size: 1.2rem; font-weight: 600; text-align: center !important; width: 100%; display: block; margin: 0.5rem 0; max-width: 100%;">知识库管理</div>
-                <div class="card-desc" style="font-size: 0.9rem; opacity: 0.8; text-align: center !important; width: 100%; display: block; margin: 0; max-width: 100%;">上传文档、构建索引，打造专属知识底座</div>
+                <div class="card-desc" style="font-size: 0.9rem; opacity: 0.8; text-align: center !important; width: 100%; display: block; margin: 0; max-width: 100%;">知识的宝库在此</div>
             </div>
         </a>
         """, unsafe_allow_html=True)
@@ -417,7 +417,7 @@ def main_ui():
             <div class="nav-card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; align-content: center; text-align: center; margin: 0 auto; padding-left: 0 !important; padding-right: 0 !important; width: 100%;">
                 <div class="card-icon" style="margin: 0 auto; text-align: center;">📖</div>
                 <div class="card-title" style="font-size: 1.2rem; font-weight: 600; text-align: center !important; width: 100%; display: block; margin: 0.5rem 0; max-width: 100%;">使用说明</div>
-                <div class="card-desc" style="font-size: 0.9rem; opacity: 0.8; text-align: center !important; width: 100%; display: block; margin: 0; max-width: 100%;">查看系统详细功能介绍和系统操作指南</div>
+                <div class="card-desc" style="font-size: 0.9rem; opacity: 0.8; text-align: center !important; width: 100%; display: block; margin: 0; max-width: 100%;">详细功能介绍 与 操作指南</div>
             </div>
         </a>
         """, unsafe_allow_html=True)
