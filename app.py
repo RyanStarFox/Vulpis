@@ -29,26 +29,62 @@ def find_port():
     return port
 
 def run_launcher():
+    # Set up logging to file for debugging
+    import logging
+    from core.settings_utils import get_user_data_dir
+    
+    log_dir = get_user_data_dir()
+    log_file = os.path.join(log_dir, 'vulpis_launcher.log')
+    
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler(log_file, mode='w', encoding='utf-8'),
+            logging.StreamHandler(sys.stdout)
+        ]
+    )
+    
+    logging.info("=" * 60)
+    logging.info("Vulpis Launcher Starting")
+    logging.info("=" * 60)
+    logging.info(f"Python Version: {sys.version}")
+    logging.info(f"Platform: {sys.platform}")
+    logging.info(f"Log file: {log_file}")
+    
     # Force UTF-8 for stdout/stderr to prevent encoding errors on Windows
     if sys.platform.startswith('win'):
         try:
             sys.stdout.reconfigure(encoding='utf-8')
             sys.stderr.reconfigure(encoding='utf-8')
-        except Exception:
-            pass
+            logging.info("Configured stdout/stderr to UTF-8")
+        except Exception as e:
+            logging.warning(f"Failed to reconfigure encoding: {e}")
 
     app_dir = os.path.dirname(os.path.abspath(__file__))
     if getattr(sys, 'frozen', False):
         if hasattr(sys, '_MEIPASS'):
              app_dir = sys._MEIPASS
+             logging.info(f"Running as frozen app, _MEIPASS: {app_dir}")
+    
+    logging.info(f"App directory: {app_dir}")
     
     # app.py is current file
     app_py = os.path.join(app_dir, 'app.py')
+    logging.info(f"Target script: {app_py}")
+    logging.info(f"Script exists: {os.path.exists(app_py)}")
+    
+    if not os.path.exists(app_py):
+        logging.error(f"CRITICAL: app.py not found at {app_py}")
+        logging.error(f"Directory contents: {os.listdir(app_dir)}")
+        sys.exit(1)
     
     port = find_port()
+    logging.info(f"Allocated port: {port}")
     
     # CRITICAL: Print this TWICE and flush to ensure Tauri Rust captures it despite any Streamlit noise.
     print(f"PYTHON_BACKEND_PORT={port}", flush=True)
+    logging.info(f"Sent port signal: PYTHON_BACKEND_PORT={port}")
     
     sys.argv = [
         'streamlit',
@@ -62,7 +98,15 @@ def run_launcher():
         '--server.enableCORS=false',
         '--server.enableXsrfProtection=false',
     ]
-    sys.exit(stcli.main())
+    
+    logging.info(f"Streamlit command: {' '.join(sys.argv)}")
+    logging.info("Calling stcli.main()...")
+    
+    try:
+        sys.exit(stcli.main())
+    except Exception as e:
+        logging.exception(f"CRITICAL ERROR during Streamlit launch: {e}")
+        sys.exit(1)
 
 def get_resource_path(relative_path):
     if hasattr(sys, '_MEIPASS'):
