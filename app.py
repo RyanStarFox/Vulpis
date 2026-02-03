@@ -29,6 +29,14 @@ def find_port():
     return port
 
 def run_launcher():
+    # Force UTF-8 for stdout/stderr to prevent encoding errors on Windows
+    if sys.platform.startswith('win'):
+        try:
+            sys.stdout.reconfigure(encoding='utf-8')
+            sys.stderr.reconfigure(encoding='utf-8')
+        except Exception:
+            pass
+
     app_dir = os.path.dirname(os.path.abspath(__file__))
     if getattr(sys, 'frozen', False):
         if hasattr(sys, '_MEIPASS'):
@@ -38,7 +46,8 @@ def run_launcher():
     app_py = os.path.join(app_dir, 'app.py')
     
     port = find_port()
-    # CRITICAL: This specific string is regex-matched by Tauri Rust code to know the backend is ready and which port to use.
+    
+    # CRITICAL: Print this TWICE and flush to ensure Tauri Rust captures it despite any Streamlit noise.
     print(f"PYTHON_BACKEND_PORT={port}", flush=True)
     
     sys.argv = [
