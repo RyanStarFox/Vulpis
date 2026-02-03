@@ -59,6 +59,8 @@ def run_launcher():
         '--server.address=127.0.0.1',
         '--server.headless=true',
         '--browser.gatherUsageStats=false',
+        '--server.enableCORS=false',
+        '--server.enableXsrfProtection=false',
     ]
     sys.exit(stcli.main())
 
