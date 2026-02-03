@@ -21,6 +21,15 @@ class VectorStore:
     def __init__(self, collection_name="knowledge_base"):
         self.collection_name = collection_name
         
+        # DEBUG: Log config values to diagnose API key issues
+        api_key = config.EMBEDDING_API_KEY
+        api_base = config.EMBEDDING_API_BASE
+        model = config.OPENAI_EMBEDDING_MODEL
+        masked_key = f"{api_key[:8]}...{api_key[-4:]}" if api_key and len(api_key) > 12 else "(empty or short)"
+        print(f"[VectorStore DEBUG] EMBEDDING_API_KEY: {masked_key}", flush=True)
+        print(f"[VectorStore DEBUG] EMBEDDING_API_BASE: {api_base}", flush=True)
+        print(f"[VectorStore DEBUG] OPENAI_EMBEDDING_MODEL: {model}", flush=True)
+        
         # Use user data directory for persistence (Cross-platform)
         data_dir = get_user_data_dir()
         self.persist_directory = os.path.join(data_dir, "chroma_db")

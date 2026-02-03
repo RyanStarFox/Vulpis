@@ -97,6 +97,9 @@ def get_openai_client(api_key=None, base_url=None):
 
 def reload():
     """Force reload of all configuration from .env file."""
+    print(f"[config.reload] Called. env_path: {env_path}", flush=True)
+    print(f"[config.reload] env_path exists: {os.path.exists(env_path)}", flush=True)
+    
     # Declare all globals that need updating
     global user_data_dir, DATA_DIR, env_path, OPENAI_API_KEY, OPENAI_API_BASE, MODEL_NAME
     global EMBEDDING_API_KEY, EMBEDDING_API_BASE, OPENAI_EMBEDDING_MODEL
@@ -148,4 +151,8 @@ def reload():
     QUIZ_CONTEXT_LENGTH = int(os.getenv("QUIZ_CONTEXT_LENGTH", "2000"))
     PANDOC_PATH = os.getenv("PANDOC_PATH", "")
     MEMORY_WINDOW_SIZE = int(os.getenv("MEMORY_WINDOW_SIZE", "10"))
-
+    
+    # Debug output
+    masked_key = f"{OPENAI_API_KEY[:8]}...{OPENAI_API_KEY[-4:]}" if OPENAI_API_KEY and len(OPENAI_API_KEY) > 12 else "(empty)"
+    print(f"[config.reload] DONE. OPENAI_API_KEY loaded: {masked_key}", flush=True)
+    print(f"[config.reload] OPENAI_API_BASE: {OPENAI_API_BASE}", flush=True)

@@ -6,6 +6,38 @@ import mimetypes
 from PIL import Image
 import streamlit.components.v1 as components 
 from streamlit.web import cli as stcli
+import logging
+
+# Module-level logging - captures when Streamlit runs this script
+_log_initialized = False
+def _init_module_log():
+    global _log_initialized
+    if _log_initialized:
+        return
+    try:
+        from core.settings_utils import get_user_data_dir
+        log_dir = get_user_data_dir()
+        log_file = os.path.join(log_dir, 'vulpis_app.log')
+        logging.basicConfig(
+            level=logging.DEBUG,
+            format='%(asctime)s - %(levelname)s - %(message)s',
+            handlers=[
+                logging.FileHandler(log_file, mode='a', encoding='utf-8'),
+                logging.StreamHandler(sys.stdout)
+            ],
+            force=True
+        )
+        _log_initialized = True
+        logging.info("=" * 60)
+        logging.info("APP.PY MODULE LOADED BY STREAMLIT")
+        logging.info(f"Python: {sys.version}")
+        logging.info(f"CWD: {os.getcwd()}")
+        logging.info(f"__file__: {__file__}")
+        logging.info(f"sys.argv: {sys.argv}")
+    except Exception as e:
+        print(f"Failed to init logging: {e}", flush=True)
+
+_init_module_log()
 
 # Fix for javascript files returning text/plain on Windows
 mimetypes.add_type('application/javascript', '.js')
@@ -114,7 +146,10 @@ def get_resource_path(relative_path):
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), relative_path)
 
 def main_ui():
+    logging.info("main_ui() called")
+    
     icon_path = get_resource_path(os.path.join("assets", "logo.png"))
+    logging.info(f"Icon path: {icon_path}, exists: {os.path.exists(icon_path)}")
     app_icon = "assets/logo.png"
 
     # Try loading as Image object (best for favicon per docs)
