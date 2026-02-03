@@ -1,7 +1,33 @@
-# CRITICAL: Path setup for PyInstaller frozen app
-# Must be BEFORE any imports from local modules (like 'core')
+# ULTRA-EARLY DIAGNOSTIC - Must be before ANY imports that could fail
 import os
 import sys
+
+# Immediately write to a file to confirm we're being executed
+try:
+    _diag_file = os.path.join(
+        os.environ.get('HOME', os.environ.get('USERPROFILE', '/tmp')),
+        'Library', 'Application Support', 'Vulpis', 'vulpis_early_diag.log'
+    )
+    os.makedirs(os.path.dirname(_diag_file), exist_ok=True)
+    with open(_diag_file, 'a', encoding='utf-8') as f:
+        import datetime
+        f.write(f"\n{'='*60}\n")
+        f.write(f"[{datetime.datetime.now()}] APP.PY EARLY LOAD\n")
+        f.write(f"Python: {sys.version}\n")
+        f.write(f"CWD: {os.getcwd()}\n")
+        f.write(f"__file__: {__file__}\n")
+        f.write(f"sys.argv: {sys.argv}\n")
+        f.write(f"sys.path[:5]: {sys.path[:5]}\n")
+        f.write(f"frozen: {getattr(sys, 'frozen', False)}\n")
+        if hasattr(sys, '_MEIPASS'):
+            f.write(f"_MEIPASS: {sys._MEIPASS}\n")
+        f.write(f"{'='*60}\n")
+        f.flush()
+except Exception as e:
+    print(f"EARLY DIAG FAILED: {e}", flush=True)
+
+# CRITICAL: Path setup for PyInstaller frozen app
+# Must be BEFORE any imports from local modules (like 'core')
 
 # For frozen apps, ensure _MEIPASS is in sys.path
 if getattr(sys, 'frozen', False):
@@ -14,13 +40,28 @@ if getattr(sys, 'frozen', False):
         if os.path.exists(_internal) and _internal not in sys.path:
             sys.path.insert(0, _internal)
 
-import streamlit as st
-import socket
-import mimetypes
-from PIL import Image
-import streamlit.components.v1 as components 
-from streamlit.web import cli as stcli
-import logging
+# Try importing streamlit - wrap in try-except to catch import errors
+try:
+    import streamlit as st
+    import socket
+    import mimetypes
+    from PIL import Image
+    import streamlit.components.v1 as components 
+    from streamlit.web import cli as stcli
+    import logging
+except Exception as e:
+    with open(_diag_file, 'a', encoding='utf-8') as f:
+        import traceback
+        f.write(f"FAILED DURING IMPORTS: {e}\n")
+        f.write(traceback.format_exc())
+    raise
+
+# Log that basic imports succeeded
+try:
+    with open(_diag_file, 'a', encoding='utf-8') as f:
+        f.write("Basic imports OK. Now importing core modules...\n")
+except:
+    pass
 
 # Module-level logging - captures when Streamlit runs this script
 _log_initialized = False
@@ -29,7 +70,15 @@ def _init_module_log():
     if _log_initialized:
         return
     try:
+        # This import can fail if core module is not found!
+        with open(_diag_file, 'a', encoding='utf-8') as f:
+            f.write("Attempting to import core.settings_utils...\n")
+        
         from core.settings_utils import get_user_data_dir
+        
+        with open(_diag_file, 'a', encoding='utf-8') as f:
+            f.write("core.settings_utils imported OK\n")
+        
         log_dir = get_user_data_dir()
         log_file = os.path.join(log_dir, 'vulpis_app.log')
         logging.basicConfig(
@@ -48,7 +97,14 @@ def _init_module_log():
         logging.info(f"CWD: {os.getcwd()}")
         logging.info(f"__file__: {__file__}")
         logging.info(f"sys.argv: {sys.argv}")
+        
+        with open(_diag_file, 'a', encoding='utf-8') as f:
+            f.write("_init_module_log completed successfully\n")
     except Exception as e:
+        import traceback
+        with open(_diag_file, 'a', encoding='utf-8') as f:
+            f.write(f"FAILED in _init_module_log: {e}\n")
+            f.write(traceback.format_exc())
         print(f"Failed to init logging: {e}", flush=True)
 
 _init_module_log()
