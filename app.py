@@ -1,6 +1,20 @@
-import streamlit as st
+# CRITICAL: Path setup for PyInstaller frozen app
+# Must be BEFORE any imports from local modules (like 'core')
 import os
 import sys
+
+# For frozen apps, ensure _MEIPASS is in sys.path
+if getattr(sys, 'frozen', False):
+    if hasattr(sys, '_MEIPASS'):
+        _meipass = sys._MEIPASS
+        if _meipass not in sys.path:
+            sys.path.insert(0, _meipass)
+        # Also add _internal if it exists (Mac PyInstaller default)
+        _internal = os.path.join(os.path.dirname(sys.executable), '_internal')
+        if os.path.exists(_internal) and _internal not in sys.path:
+            sys.path.insert(0, _internal)
+
+import streamlit as st
 import socket
 import mimetypes
 from PIL import Image

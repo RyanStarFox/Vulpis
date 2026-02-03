@@ -79,3 +79,6 @@ def save_settings_to_env(settings):
 
     with open(env_path, "w", encoding="utf-8") as f:
         f.writelines(new_lines)
+    
+    print(f"[settings_utils] Settings saved to: {env_path}", flush=True)
+    print(f"[settings_utils] Keys saved: {list(settings.keys())}", flush=True)

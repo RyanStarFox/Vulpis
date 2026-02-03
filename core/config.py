@@ -1,22 +1,100 @@
 import os
+import sys
+import shutil
 import httpx
 from openai import OpenAI
 from dotenv import load_dotenv
 
+print("=" * 60, flush=True)
+print("[config] CONFIG MODULE LOADING", flush=True)
+print(f"[config] Python: {sys.version}", flush=True)
+print(f"[config] CWD: {os.getcwd()}", flush=True)
+print(f"[config] __file__: {__file__}", flush=True)
+print(f"[config] sys.frozen: {getattr(sys, 'frozen', False)}", flush=True)
+if hasattr(sys, '_MEIPASS'):
+    print(f"[config] _MEIPASS: {sys._MEIPASS}", flush=True)
+print("=" * 60, flush=True)
+
 # 数据目录配置
 from core.settings_utils import get_user_data_dir
+
+def _get_env_example_path():
+    """Get path to .env.example template file."""
+    # In frozen app, look in _MEIPASS
+    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+        path = os.path.join(sys._MEIPASS, '.env.example')
+        print(f"[config] _get_env_example_path (frozen): {path}", flush=True)
+        return path
+    # In development, look relative to this file
+    path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env.example')
+    print(f"[config] _get_env_example_path (dev): {path}", flush=True)
+    return path
+
+def _ensure_env_file():
+    """Ensure .env file exists in user data directory. If not, create from .env.example."""
+    user_dir = get_user_data_dir()
+    env_path = os.path.join(user_dir, '.env')
+    
+    print(f"[config] User data dir: {user_dir}", flush=True)
+    print(f"[config] Expected .env path: {env_path}", flush=True)
+    print(f"[config] .env exists: {os.path.exists(env_path)}", flush=True)
+    
+    if os.path.exists(env_path):
+        # Read and log first few lines (without sensitive data)
+        try:
+            with open(env_path, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+            print(f"[config] .env has {len(lines)} lines", flush=True)
+            # Log keys found (not values)
+            keys = [l.split('=')[0].strip() for l in lines if '=' in l and not l.strip().startswith('#')]
+            print(f"[config] Keys in .env: {keys}", flush=True)
+        except Exception as e:
+            print(f"[config] WARNING: Could not read .env: {e}", flush=True)
+        return env_path
+    
+    # .env doesn't exist, try to copy from .env.example
+    example_path = _get_env_example_path()
+    print(f"[config] No .env found. Template path: {example_path}", flush=True)
+    print(f"[config] Template exists: {os.path.exists(example_path)}", flush=True)
+    
+    if os.path.exists(example_path):
+        try:
+            shutil.copy(example_path, env_path)
+            print(f"[config] SUCCESS: Created .env from template: {env_path}", flush=True)
+        except Exception as e:
+            error_msg = f"[config] FATAL: Could not create .env: {e}"
+            print(error_msg, flush=True)
+            raise RuntimeError(error_msg)
+    else:
+        # No template found - this is an ERROR, not a fallback
+        error_msg = f"[config] FATAL: No .env and no .env.example template found at {example_path}"
+        print(error_msg, flush=True)
+        # List directory contents to debug
+        try:
+            parent_dir = os.path.dirname(example_path)
+            print(f"[config] Contents of {parent_dir}: {os.listdir(parent_dir)[:20]}", flush=True)
+        except Exception as e:
+            print(f"[config] Could not list dir: {e}", flush=True)
+        raise RuntimeError(error_msg)
+    
+    return env_path
 
 # Use user data directory for all persistent data
 user_data_dir = get_user_data_dir()
 DATA_DIR = os.path.join(user_data_dir, "data")
-env_path = os.path.join(user_data_dir, '.env')
+print(f"[config] DATA_DIR: {DATA_DIR}", flush=True)
 
-# 加载 .env 文件中的环境变量
-# 优先从用户数据目录加载，如果没有则尝试加载当前目录作为回退
-if os.path.exists(env_path):
-    load_dotenv(dotenv_path=env_path)
-else:
-    load_dotenv() # Fallback to CWD
+# Ensure .env exists (create from template if needed)
+env_path = _ensure_env_file()
+
+# Load .env file - NO FALLBACK
+print(f"[config] Loading .env from: {env_path}", flush=True)
+result = load_dotenv(dotenv_path=env_path, override=True)
+print(f"[config] load_dotenv result: {result}", flush=True)
+
+# Verify loading by checking a known key
+test_key = os.getenv("MODEL_NAME", "__NOT_SET__")
+print(f"[config] Verification - MODEL_NAME from env: '{test_key}'", flush=True)
 
 # API配置 (文本生成模型)
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
@@ -39,14 +117,6 @@ VL_MODEL_NAME = os.getenv("VL_MODEL_NAME", "")
 ENABLE_IMAGE_CAPTIONING = os.getenv("ENABLE_IMAGE_CAPTIONING", "False").lower() == "true"
 IMAGE_CAPTION_MODEL = os.getenv("IMAGE_CAPTION_MODEL", "") 
 # Captioning 也可以有独立的 key，目前复用 VL_API_KEY
-
-
-# 数据目录配置
-from core.settings_utils import get_user_data_dir
-
-# Use user data directory for all persistent data
-user_data_dir = get_user_data_dir()
-DATA_DIR = os.path.join(user_data_dir, "data")
 
 # 向量数据库配置
 # Force vector DB to live in user data dir as well
@@ -97,8 +167,20 @@ def get_openai_client(api_key=None, base_url=None):
 
 def reload():
     """Force reload of all configuration from .env file."""
-    print(f"[config.reload] Called. env_path: {env_path}", flush=True)
+    print("=" * 40, flush=True)
+    print(f"[config.reload] RELOAD CALLED", flush=True)
+    print(f"[config.reload] env_path: {env_path}", flush=True)
     print(f"[config.reload] env_path exists: {os.path.exists(env_path)}", flush=True)
+    
+    # Read .env content for debugging
+    if os.path.exists(env_path):
+        try:
+            with open(env_path, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+            keys = [l.split('=')[0].strip() for l in lines if '=' in l and not l.strip().startswith('#')]
+            print(f"[config.reload] Keys in .env: {keys}", flush=True)
+        except Exception as e:
+            print(f"[config.reload] Could not read .env: {e}", flush=True)
     
     # Declare all globals that need updating
     global user_data_dir, DATA_DIR, env_path, OPENAI_API_KEY, OPENAI_API_BASE, MODEL_NAME
@@ -110,12 +192,14 @@ def reload():
     global CHUNK_SIZE, CHUNK_OVERLAP, SIZE_ERROR, OVERLAP_ERROR, MAX_TOKENS
     global TOP_K, EXERCISE_TOP_K, EXERCISE_TOP_K_TOPIC, QUIZ_CONTEXT_LENGTH, PANDOC_PATH, MEMORY_WINDOW_SIZE
     
-    # Reload dotenv
-    # Note: load_dotenv doesn't override by default, so we must force override
+    # Reload dotenv - NO FALLBACK
     if os.path.exists(env_path):
-        load_dotenv(dotenv_path=env_path, override=True)
+        result = load_dotenv(dotenv_path=env_path, override=True)
+        print(f"[config.reload] load_dotenv result: {result}", flush=True)
     else:
-        load_dotenv(override=True)
+        error_msg = f"[config.reload] FATAL: .env not found at {env_path}"
+        print(error_msg, flush=True)
+        raise RuntimeError(error_msg)
         
     # Re-read all variables
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
