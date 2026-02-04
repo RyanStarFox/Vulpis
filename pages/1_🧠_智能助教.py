@@ -174,6 +174,9 @@ last_msg = st.session_state.messages[-1] if st.session_state.messages else None
 needs_response = last_msg and last_msg.get("role") == "user" and last_msg.get("_needs_response", False)
 
 if needs_response:
+    # CRITICAL: Mark as processed immediately to prevent restart on page switch
+    last_msg["_needs_response"] = False
+    
     prompt = last_msg["content"]
     current_image_data = last_msg.get("image_base64", None)
     
@@ -269,6 +272,5 @@ if needs_response:
             full_response = f"❌ 发生错误: {str(e)}"
             message_placeholder.markdown(full_response)
     
-    # Mark user message as processed and append assistant response
-    last_msg["_needs_response"] = False
+    # Append assistant response (flag already set to False at start)
     st.session_state.messages.append({"role": "assistant", "content": full_response})
