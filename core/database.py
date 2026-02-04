@@ -129,11 +129,8 @@ def init_db():
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_questions_kb_name ON questions(kb_name)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_history_timestamp ON history(timestamp)')
         
-        # 确保默认错题本存在
-        cursor.execute('''
-            INSERT OR IGNORE INTO mistake_books (name, created_at) 
-            VALUES (?, ?)
-        ''', ("默认错题本", None))
+        # NOTE: No longer auto-create default mistake book
+        # User must create one manually via the UI
     
     _db_initialized = True
 

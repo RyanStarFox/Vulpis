@@ -204,7 +204,8 @@ if "outline_result" in st.session_state:
                             md_path = md_file.name
                             
                         pdf_path = md_path.replace('.md', '.pdf')
-                        pandoc_cmd = config.PANDOC_PATH if config.PANDOC_PATH else 'pandoc'
+                        from core.settings_utils import get_pandoc_path
+                        pandoc_cmd = get_pandoc_path() or 'pandoc'
                         
                         cmd = [
                             pandoc_cmd, md_path, '-o', pdf_path,
@@ -251,7 +252,8 @@ if "outline_result" in st.session_state:
                             md_path = md_file.name
                         
                         docx_path = md_path.replace('.md', '.docx')
-                        pandoc_cmd = config.PANDOC_PATH if config.PANDOC_PATH else 'pandoc'
+                        from core.settings_utils import get_pandoc_path
+                        pandoc_cmd = get_pandoc_path() or 'pandoc'
                         
                         # Docx conversion doesn't need latex engine
                         cmd = [

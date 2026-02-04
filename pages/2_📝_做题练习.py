@@ -157,8 +157,13 @@ if "score" not in st.session_state:
 if st.session_state.quiz_state == "config":
     st.subheader("🛠️ 练习配置")
     
+    # Load last selected KB from disk (shared with AI Assistant)
+    from core.settings_utils import get_last_selected_kb, set_last_selected_kb
+    stored_kb = get_last_selected_kb()
+    default_index = kbs.index(stored_kb) if stored_kb and stored_kb in kbs else 0
+    
     with st.form("quiz_settings_form"):
-        selected_kb = st.selectbox("📚 选择知识库", kbs)
+        selected_kb = st.selectbox("📚 选择知识库", kbs, index=default_index)
         
         col1, col2 = st.columns(2)
         with col1:
@@ -187,6 +192,10 @@ if st.session_state.quiz_state == "config":
         submitted = st.form_submit_button("🚀 开始练习", type="primary")
         
     if submitted:
+        # Save KB selection to disk (shared with AI Assistant)
+        if selected_kb != stored_kb:
+            set_last_selected_kb(selected_kb)
+        
         # Check KB status before starting
         with st.spinner("正在检查知识库状态..."):
             temp_agent = RAGAgent(kb_name=selected_kb)

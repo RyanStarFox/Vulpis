@@ -146,13 +146,8 @@ class QuestionDB:
             # Delete the book
             cursor.execute('DELETE FROM mistake_books WHERE id = ?', (book_id,))
             
-            # Ensure at least one book exists
-            cursor.execute('SELECT COUNT(*) as count FROM mistake_books')
-            if cursor.fetchone()['count'] == 0:
-                cursor.execute(
-                    'INSERT INTO mistake_books (name, created_at) VALUES (?, ?)',
-                    ("默认错题本", time.time())
-                )
+            # NOTE: No longer auto-create default mistake book
+            # Allow empty state - user must create one manually
             
             return True
 

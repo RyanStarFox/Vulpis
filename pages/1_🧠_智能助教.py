@@ -76,7 +76,7 @@ ui_components.render_sidebar()
 
 st.title("🧠 智能助教")
 
-# KB Selection
+# KB Selection with persistence
 kb_manager = KBManager()
 kbs = kb_manager.list_kbs()
 
@@ -84,7 +84,16 @@ if not kbs:
     st.warning("⚠️ 未检测到知识库。请先前往【知识库管理】页面上传文档。")
     st.stop()
 
-selected_kb = st.sidebar.selectbox("📚 选择知识库", kbs, index=0)
+# Load last selected KB from disk (shared with Quiz page)
+from core.settings_utils import get_last_selected_kb, set_last_selected_kb
+stored_kb = get_last_selected_kb()
+default_index = kbs.index(stored_kb) if stored_kb and stored_kb in kbs else 0
+
+selected_kb = st.sidebar.selectbox("📚 选择知识库", kbs, index=default_index, key="kb_selector_assistant")
+
+# Save selection to disk when changed (only if different from stored)
+if selected_kb != stored_kb:
+    set_last_selected_kb(selected_kb)
 
 # Initialize Agent
 if "agent" not in st.session_state or st.session_state.get("agent_kb") != selected_kb:
@@ -150,7 +159,7 @@ for message in st.session_state.messages:
 # Input
 if prompt := st.chat_input("请输入问题..."):
     # User message
-    user_msg = {"role": "user", "content": prompt}
+    user_msg = {"role": "user", "content": prompt, "_needs_response": True}
     if image_base64:
         user_msg["image_base64"] = image_base64
     st.session_state.messages.append(user_msg)
@@ -160,9 +169,11 @@ if prompt := st.chat_input("请输入问题..."):
     
     st.rerun()
 
-# Response Logic
-if st.session_state.messages and st.session_state.messages[-1]["role"] == "user":
-    last_msg = st.session_state.messages[-1]
+# Response Logic - only process if last user message needs a response
+last_msg = st.session_state.messages[-1] if st.session_state.messages else None
+needs_response = last_msg and last_msg.get("role") == "user" and last_msg.get("_needs_response", False)
+
+if needs_response:
     prompt = last_msg["content"]
     current_image_data = last_msg.get("image_base64", None)
     
@@ -261,6 +272,7 @@ if st.session_state.messages and st.session_state.messages[-1]["role"] == "user"
         except Exception as e:
             full_response = f"❌ 发生错误: {str(e)}"
             message_placeholder.markdown(full_response)
-            
+    
+    # Mark user message as processed and append assistant response
+    last_msg["_needs_response"] = False
     st.session_state.messages.append({"role": "assistant", "content": full_response})
-
