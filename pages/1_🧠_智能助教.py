@@ -187,79 +187,75 @@ if needs_response:
             
             # 如果不是简单回答，先检索上下文用于显示参考资料
             docs = []
+            context = ""
             if not is_simple_answer:
-                context_str, docs = agent.retrieve_context(prompt)
+                with st.spinner("正在检索资料..."):
+                    context, docs = agent.retrieve_context(prompt)
             
-            # 使用流式输出
-            with st.spinner("思考中..."):
-                # 构建消息
-                from core.rag_agent import RAGAgent
-                
-                # 准备上下文
-                if is_simple_answer:
-                    context = ""
-                else:
-                    context, _ = agent.retrieve_context(prompt)
-                
-                # 构建消息
-                messages = [{"role": "system", "content": agent.system_prompt}]
-                
-                # 添加历史记录（不包括当前消息）
-                if st.session_state.messages[:-1]:
-                    clean_history = []
-                    for msg in st.session_state.messages[:-1][-5:]:  # 只取最近 5 条
-                        content = msg.get("content", "")
-                        role = msg.get("role", "user")
-                        clean_history.append({"role": role, "content": content})
-                    messages.extend(clean_history)
-                
-                # 构建用户消息
-                if is_simple_answer:
-                    user_text = f"""(用户正在回答上一轮的选择题)
+            # 准备消息 - 显示准备状态
+            message_placeholder.markdown("🤔 正在准备回复...")
+            
+            from core.rag_agent import RAGAgent
+            
+            # 构建消息
+            messages = [{"role": "system", "content": agent.system_prompt}]
+            
+            # 添加历史记录（不包括当前消息）
+            if st.session_state.messages[:-1]:
+                clean_history = []
+                for msg in st.session_state.messages[:-1][-5:]:  # 只取最近 5 条
+                    content = msg.get("content", "")
+                    role = msg.get("role", "user")
+                    clean_history.append({"role": role, "content": content})
+                messages.extend(clean_history)
+            
+            # 构建用户消息
+            if is_simple_answer:
+                user_text = f"""(用户正在回答上一轮的选择题)
 学生回答：{prompt}
 请执行【作业批改】：判断对错并解析。
 """
-                else:
-                    user_text = f"""请阅读资料回答问题。
+            else:
+                user_text = f"""请阅读资料回答问题。
 === 课程资料 ===
 {context if context else "（未检索到资料，尝试基于常识回答）"}
 === 结束 ===
 学生问题：{prompt}
 """
-                
-                # 多模态支持
-                if current_image_data:
-                    content_payload = [
-                        {"type": "text", "text": user_text},
-                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{current_image_data}"}}
-                    ]
-                    current_model = agent.vl_model
-                else:
-                    content_payload = user_text
-                    current_model = agent.model
-                
-                messages.append({"role": "user", "content": content_payload})
-                
-                # 流式调用 API
-                stream = agent.client.chat.completions.create(
-                    model=current_model,
-                    messages=messages,
-                    temperature=0.3,
-                    max_tokens=1500,
-                    stream=True  # 启用流式输出
-                )
-                
-                # 逐字显示
-                for chunk in stream:
-                    if not chunk.choices:
-                        continue
-                    if chunk.choices[0].delta.content is not None:
-                        full_response += chunk.choices[0].delta.content
-                        message_placeholder.markdown(full_response + "▌")
-                
-                # 应用 LaTeX 格式修复
-                full_response = agent.fix_latex_format(full_response)
-                message_placeholder.markdown(full_response)
+            
+            # 多模态支持
+            if current_image_data:
+                content_payload = [
+                    {"type": "text", "text": user_text},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{current_image_data}"}}
+                ]
+                current_model = agent.vl_model
+            else:
+                content_payload = user_text
+                current_model = agent.model
+            
+            messages.append({"role": "user", "content": content_payload})
+            
+            # 流式调用 API - 不使用 spinner
+            stream = agent.client.chat.completions.create(
+                model=current_model,
+                messages=messages,
+                temperature=0.3,
+                max_tokens=1500,
+                stream=True  # 启用流式输出
+            )
+            
+            # 真正的流式显示 - 直接渲染，无 spinner
+            for chunk in stream:
+                if not chunk.choices:
+                    continue
+                if chunk.choices[0].delta.content is not None:
+                    full_response += chunk.choices[0].delta.content
+                    message_placeholder.markdown(full_response + "▌")
+            
+            # 应用 LaTeX 格式修复
+            full_response = agent.fix_latex_format(full_response)
+            message_placeholder.markdown(full_response)
             
             # 显示参考资料
             if docs:

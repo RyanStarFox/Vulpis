@@ -215,7 +215,7 @@ def process_question_async(rid, book_name, q_c, q_o, q_correct, q_e, ocr_b64, at
         import os
         import re
         from dotenv import load_dotenv
-        from question_db import QuestionDB
+        from core.question_db import QuestionDB
         from core import config
         
         # 强制重新加载环境变量

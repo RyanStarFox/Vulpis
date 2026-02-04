@@ -131,152 +131,147 @@ if "outline_result" in st.session_state:
     
     st.markdown("### 📥 下载大纲")
     
-    # container for downloads to isolate layout
-    with st.container():
-        dl_col1, dl_col2, dl_col3 = st.columns(3)
+    # Helper for Auto-Download (defined once)
+    def auto_download_file(data, filename, mime_type, key_suffix, success_msg):
+        import base64
+        import time as t
+        b64 = base64.b64encode(data).decode()
+        link_id = f"auto_dl_{key_suffix}_{int(t.time())}"
         
-        # 1. Download Markdown (Direct)
-        with dl_col1:
-            st.download_button(
-                label="⬇️ 下载 Markdown (.md)",
-                data=outline,
-                file_name=f"{selected_kb}_大纲.md",
-                mime="text/markdown",
-                use_container_width=True,
-                type="secondary",
-                key="dl_md_btn_v3"
-            )
+        html = f"""
+            <a id="{link_id}" href="data:{mime_type};base64,{b64}" download="{filename}" style="display:none;">Download</a>
+            <script>
+                (function() {{
+                    setTimeout(function() {{
+                        var link = document.getElementById("{link_id}");
+                        if (link) link.click();
+                    }}, 150);
+                }})();
+            </script>
+        """
+        st.markdown(html, unsafe_allow_html=True)
+        st.success(success_msg)
         
-        # Helper for Auto-Download
-        def auto_download_file(data, filename, mime_type, key_suffix, success_msg):
-            import base64
-            import time
-            b64 = base64.b64encode(data).decode()
-            link_id = f"auto_dl_{key_suffix}_{int(time.time())}"
-            
-            # HTML for invisible link and auto-click script
-            html = f"""
-                <a id="{link_id}" href="data:{mime_type};base64,{b64}" download="{filename}" style="display:none;">Download</a>
-                <script>
-                    (function() {{
-                        setTimeout(function() {{
-                            var link = document.getElementById("{link_id}");
-                            if (link) link.click();
-                        }}, 150);
-                    }})();
-                </script>
-            """
-            st.markdown(html, unsafe_allow_html=True)
-            st.success(success_msg)
-            
-            # Native Backup Button (Required for Desktop App where Data URIs are blocked)
-            st.download_button(
-                label=f"💾 点击保存 {filename}",
-                data=data,
-                file_name=filename,
-                mime=mime_type,
-                type="primary",
-                use_container_width=True,
-                key=f"manual_dl_btn_{key_suffix}_{int(time.time())}"
-            )
-
-        # 2. PDF Generation & Download
-        with dl_col2:
-            if st.button("⬇️ 生成并下载 PDF", use_container_width=True, type="secondary", key="gen_pdf_btn_final"):
-                import subprocess, tempfile, os, re, config
+        st.download_button(
+            label=f"💾 点击保存 {filename}",
+            data=data,
+            file_name=filename,
+            mime=mime_type,
+            type="primary",
+            use_container_width=True,
+            key=f"manual_dl_btn_{key_suffix}_{int(t.time())}"
+        )
+    
+    # Download buttons row - only buttons, no generation logic here
+    dl_col1, dl_col2, dl_col3 = st.columns(3)
+    
+    with dl_col1:
+        st.download_button(
+            label="⬇️ 下载 Markdown (.md)",
+            data=outline,
+            file_name=f"{selected_kb}_大纲.md",
+            mime="text/markdown",
+            use_container_width=True,
+            type="secondary",
+            key="dl_md_btn_v3"
+        )
+    
+    with dl_col2:
+        gen_pdf_clicked = st.button("⬇️ 生成并下载 PDF", use_container_width=True, type="secondary", key="gen_pdf_btn_final")
+    
+    with dl_col3:
+        gen_docx_clicked = st.button("⬇️ 生成并下载 Word", use_container_width=True, type="secondary", key="gen_docx_btn")
+    
+    # PDF Generation - outside columns
+    if gen_pdf_clicked:
+        import subprocess, tempfile, os, re
+        
+        common_paths = ["/opt/homebrew/bin", "/usr/local/bin", "/Library/TeX/texbin"]
+        for p in common_paths:
+            if os.path.exists(p) and p not in os.environ["PATH"]:
+                os.environ["PATH"] += os.pathsep + p
                 
-                # Setup PATH logic...
-                common_paths = ["/opt/homebrew/bin", "/usr/local/bin", "/Library/TeX/texbin"]
-                for p in common_paths:
-                    if os.path.exists(p) and p not in os.environ["PATH"]:
-                        os.environ["PATH"] += os.pathsep + p
-                        
-                try:
-                    with st.spinner("正在通过 Pandoc 生成 PDF..."):
-                        # Prepare content (Fix math)
-                        outline_safe = outline
-                        outline_safe = re.sub(r'(?<!\\)\$[ \t]+', '$', outline_safe)                
-                        outline_safe = re.sub(r'[ \t]+(?<!\\)\$', '$', outline_safe)
-                        outline_safe = outline_safe.replace(r"\symcal", r"\mathcal")
-                        
-                        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False, encoding='utf-8') as md_file:
-                            md_file.write(outline_safe)
-                            md_path = md_file.name
-                            
-                        pdf_path = md_path.replace('.md', '.pdf')
-                        from core.settings_utils import get_pandoc_path
-                        pandoc_cmd = get_pandoc_path() or 'pandoc'
-                        
-                        cmd = [
-                            pandoc_cmd, md_path, '-o', pdf_path,
-                            '--pdf-engine=xelatex',
-                            '-V', 'CJKmainfont=Heiti SC',
-                            '-V', 'geometry:margin=2.5cm',
-                            '-V', 'fontsize=11pt',
-                            '--highlight-style=tango'
-                        ]
-                        
-                        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
-                        
-                        if result.returncode == 0 and os.path.exists(pdf_path):
-                            with open(pdf_path, 'rb') as f:
-                                pdf_bytes = f.read()
-                            auto_download_file(pdf_bytes, f"{selected_kb}_大纲.pdf", "application/pdf", "pdf", "✅ PDF 生成成功！")
-                        else:
-                            st.error("❌ PDF 生成失败")
-                            with st.expander("📜 错误日志"):
-                                st.code(result.stderr, language="text")
-                            if "xelatex" in (result.stderr or "").lower():
-                                st.info("💡 提示：缺少 XeLaTeX 引擎。")
-                                
-                except Exception as e:
-                    st.error(f"出错: {e}")
-                finally:
-                    # Cleanup
-                    if 'md_path' in locals() and os.path.exists(md_path): os.unlink(md_path)
-                    if 'pdf_path' in locals() and os.path.exists(pdf_path): os.unlink(pdf_path)
-
-        # 3. Word Generation & Download
-        with dl_col3:
-            if st.button("⬇️ 生成并下载 Word", use_container_width=True, type="secondary", key="gen_docx_btn"):
-                import subprocess, tempfile, os, config, re
+        try:
+            with st.spinner("正在通过 Pandoc 生成 PDF..."):
+                outline_safe = outline
+                outline_safe = re.sub(r'(?<!\\)\$[ \t]+', '$', outline_safe)                
+                outline_safe = re.sub(r'[ \t]+(?<!\\)\$', '$', outline_safe)
+                outline_safe = outline_safe.replace(r"\symcal", r"\mathcal")
                 
-                try:
-                    with st.spinner("正在转换 Word 文档..."):
-                        # For Word, we usually don't need strict math fixes, but it helps.
-                        # Pandoc handles math in docx slightly differently (native equations).
-                        outline_safe = outline.replace(r"\symcal", r"\mathcal")
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False, encoding='utf-8') as md_file:
+                    md_file.write(outline_safe)
+                    md_path = md_file.name
+                    
+                pdf_path = md_path.replace('.md', '.pdf')
+                from core.settings_utils import get_pandoc_path
+                pandoc_cmd = get_pandoc_path() or 'pandoc'
+                
+                cmd = [
+                    pandoc_cmd, md_path, '-o', pdf_path,
+                    '--pdf-engine=xelatex',
+                    '-V', 'CJKmainfont=Heiti SC',
+                    '-V', 'geometry:margin=2.5cm',
+                    '-V', 'fontsize=11pt',
+                    '--highlight-style=tango'
+                ]
+                
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+                
+                if result.returncode == 0 and os.path.exists(pdf_path):
+                    with open(pdf_path, 'rb') as f:
+                        pdf_bytes = f.read()
+                    auto_download_file(pdf_bytes, f"{selected_kb}_大纲.pdf", "application/pdf", "pdf", "✅ PDF 生成成功！")
+                else:
+                    st.error("❌ PDF 生成失败")
+                    with st.expander("📜 错误日志"):
+                        st.code(result.stderr, language="text")
+                    if "xelatex" in (result.stderr or "").lower():
+                        st.info("💡 提示：缺少 XeLaTeX 引擎。")
                         
-                        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False, encoding='utf-8') as md_file:
-                            md_file.write(outline_safe)
-                            md_path = md_file.name
+        except Exception as e:
+            st.error(f"出错: {e}")
+        finally:
+            if 'md_path' in locals() and os.path.exists(md_path): os.unlink(md_path)
+            if 'pdf_path' in locals() and os.path.exists(pdf_path): os.unlink(pdf_path)
+
+    # Word Generation - outside columns
+    if gen_docx_clicked:
+        import subprocess, tempfile, os, re
+        
+        try:
+            with st.spinner("正在转换 Word 文档..."):
+                outline_safe = outline.replace(r"\symcal", r"\mathcal")
+                
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False, encoding='utf-8') as md_file:
+                    md_file.write(outline_safe)
+                    md_path = md_file.name
+                
+                docx_path = md_path.replace('.md', '.docx')
+                from core.settings_utils import get_pandoc_path
+                pandoc_cmd = get_pandoc_path() or 'pandoc'
+                
+                cmd = [
+                    pandoc_cmd, md_path, '-o', docx_path,
+                    '--highlight-style=tango'
+                ]
+                
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+                
+                if result.returncode == 0 and os.path.exists(docx_path):
+                    with open(docx_path, 'rb') as f:
+                        docx_bytes = f.read()
+                    auto_download_file(docx_bytes, f"{selected_kb}_大纲.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "docx", "✅ Word 生成成功！")
+                else:
+                    st.error("❌ Word 生成失败")
+                    with st.expander("📜 错误日志"):
+                        st.code(result.stderr, language="text")
                         
-                        docx_path = md_path.replace('.md', '.docx')
-                        from core.settings_utils import get_pandoc_path
-                        pandoc_cmd = get_pandoc_path() or 'pandoc'
-                        
-                        # Docx conversion doesn't need latex engine
-                        cmd = [
-                            pandoc_cmd, md_path, '-o', docx_path,
-                            '--highlight-style=tango'
-                        ]
-                        
-                        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
-                        
-                        if result.returncode == 0 and os.path.exists(docx_path):
-                            with open(docx_path, 'rb') as f:
-                                docx_bytes = f.read()
-                            auto_download_file(docx_bytes, f"{selected_kb}_大纲.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "docx", "✅ Word 生成成功！")
-                        else:
-                            st.error("❌ Word 生成失败")
-                            with st.expander("📜 错误日志"):
-                                st.code(result.stderr, language="text")
-                                
-                except Exception as e:
-                    st.error(f"出错: {e}")
-                finally:
-                     if 'md_path' in locals() and os.path.exists(md_path): os.unlink(md_path)
-                     if 'docx_path' in locals() and os.path.exists(docx_path): os.unlink(docx_path)
+        except Exception as e:
+            st.error(f"出错: {e}")
+        finally:
+             if 'md_path' in locals() and os.path.exists(md_path): os.unlink(md_path)
+             if 'docx_path' in locals() and os.path.exists(docx_path): os.unlink(docx_path)
+
 
     st.markdown("---")
     st.markdown("### 📝 预览与修改")
