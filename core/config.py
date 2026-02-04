@@ -167,6 +167,16 @@ def get_openai_client(api_key=None, base_url=None):
 
 def reload():
     """Force reload of all configuration from .env file."""
+    # Declare all globals FIRST (before any usage)
+    global user_data_dir, DATA_DIR, env_path, OPENAI_API_KEY, OPENAI_API_BASE, MODEL_NAME
+    global EMBEDDING_API_KEY, EMBEDDING_API_BASE, OPENAI_EMBEDDING_MODEL
+    global VL_API_KEY, VL_API_BASE, VL_MODEL_NAME
+    global ENABLE_IMAGE_CAPTIONING, IMAGE_CAPTION_MODEL
+    global VECTOR_DB_PATH, COLLECTION_NAME
+    global ENABLE_HYBRID_SEARCH, HYBRID_SEARCH_ALPHA
+    global CHUNK_SIZE, CHUNK_OVERLAP, SIZE_ERROR, OVERLAP_ERROR, MAX_TOKENS
+    global TOP_K, EXERCISE_TOP_K, EXERCISE_TOP_K_TOPIC, QUIZ_CONTEXT_LENGTH, PANDOC_PATH, MEMORY_WINDOW_SIZE
+    
     print("=" * 40, flush=True)
     print(f"[config.reload] RELOAD CALLED", flush=True)
     print(f"[config.reload] env_path: {env_path}", flush=True)
@@ -181,16 +191,6 @@ def reload():
             print(f"[config.reload] Keys in .env: {keys}", flush=True)
         except Exception as e:
             print(f"[config.reload] Could not read .env: {e}", flush=True)
-    
-    # Declare all globals that need updating
-    global user_data_dir, DATA_DIR, env_path, OPENAI_API_KEY, OPENAI_API_BASE, MODEL_NAME
-    global EMBEDDING_API_KEY, EMBEDDING_API_BASE, OPENAI_EMBEDDING_MODEL
-    global VL_API_KEY, VL_API_BASE, VL_MODEL_NAME
-    global ENABLE_IMAGE_CAPTIONING, IMAGE_CAPTION_MODEL
-    global VECTOR_DB_PATH, COLLECTION_NAME
-    global ENABLE_HYBRID_SEARCH, HYBRID_SEARCH_ALPHA
-    global CHUNK_SIZE, CHUNK_OVERLAP, SIZE_ERROR, OVERLAP_ERROR, MAX_TOKENS
-    global TOP_K, EXERCISE_TOP_K, EXERCISE_TOP_K_TOPIC, QUIZ_CONTEXT_LENGTH, PANDOC_PATH, MEMORY_WINDOW_SIZE
     
     # Reload dotenv - NO FALLBACK
     if os.path.exists(env_path):
