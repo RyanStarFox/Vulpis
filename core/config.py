@@ -179,14 +179,19 @@ def get_openai_client(api_key=None, base_url=None):
     Factory function to create an OpenAI client with SSL verification disabled (verify=False).
     Use this instead of creating OpenAI() directly to ensure self-signed certificates are accepted.
     """
-    # Fallback to defaults if None is passed
-    if api_key is None: api_key = OPENAI_API_KEY
-    if base_url is None: base_url = OPENAI_API_BASE
+    # Fallback to defaults if None OR EMPTY STRING is passed
+    # This is critical because .env may have EMBEDDING_API_KEY= (empty value)
+    if not api_key:  # handles None, "", and other falsy values
+        api_key = OPENAI_API_KEY
+        print(f"[get_openai_client] api_key was empty, using OPENAI_API_KEY fallback", flush=True)
+    if not base_url:  # handles None, "", and other falsy values
+        base_url = OPENAI_API_BASE
+        print(f"[get_openai_client] base_url was empty, using OPENAI_API_BASE fallback: {base_url}", flush=True)
     
     # Log what we're using
     _masked = f"{api_key[:8]}...{api_key[-4:]}" if api_key and len(api_key) > 12 else "(empty)"
-    print(f"[get_openai_client] api_key: {_masked}", flush=True)
-    print(f"[get_openai_client] base_url: {base_url if base_url else '(empty/default)'}", flush=True)
+    print(f"[get_openai_client] FINAL api_key: {_masked}", flush=True)
+    print(f"[get_openai_client] FINAL base_url: {base_url if base_url else '(empty/default)'}", flush=True)
     
     # Prepare arguments
     kwargs = {
