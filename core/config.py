@@ -101,11 +101,41 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_API_BASE = os.getenv("OPENAI_API_BASE", "")
 MODEL_NAME = os.getenv("MODEL_NAME", "")
 
+# Log main API config with source
+_raw_key = os.getenv("OPENAI_API_KEY")
+_raw_base = os.getenv("OPENAI_API_BASE")
+_raw_model = os.getenv("MODEL_NAME")
+print(f"[config] OPENAI_API_KEY from .env: {'YES' if _raw_key else 'NO (empty/missing)'}", flush=True)
+print(f"[config] OPENAI_API_BASE from .env: {_raw_base if _raw_base else '(empty/missing)'}", flush=True)
+print(f"[config] MODEL_NAME from .env: {_raw_model if _raw_model else '(empty/missing)'}", flush=True)
+
 # Embedding 模型API配置
 # 如果未独立设置，默认回退到使用 OPENAI_API_KEY/BASE
-EMBEDDING_API_KEY = os.getenv("EMBEDDING_API_KEY", OPENAI_API_KEY)
-EMBEDDING_API_BASE = os.getenv("EMBEDDING_API_BASE", OPENAI_API_BASE)
-OPENAI_EMBEDDING_MODEL = os.getenv("OPENAI_EMBEDDING_MODEL", "")
+_raw_emb_key = os.getenv("EMBEDDING_API_KEY")
+_raw_emb_base = os.getenv("EMBEDDING_API_BASE")
+_raw_emb_model = os.getenv("OPENAI_EMBEDDING_MODEL")
+
+# Check if embedding config is explicitly set or falling back
+if _raw_emb_key:
+    EMBEDDING_API_KEY = _raw_emb_key
+    print(f"[config] EMBEDDING_API_KEY: from .env (explicit)", flush=True)
+else:
+    EMBEDDING_API_KEY = OPENAI_API_KEY
+    print(f"[config] EMBEDDING_API_KEY: FALLBACK to OPENAI_API_KEY", flush=True)
+
+if _raw_emb_base:
+    EMBEDDING_API_BASE = _raw_emb_base
+    print(f"[config] EMBEDDING_API_BASE: from .env = '{_raw_emb_base}'", flush=True)
+else:
+    EMBEDDING_API_BASE = OPENAI_API_BASE
+    print(f"[config] EMBEDDING_API_BASE: FALLBACK to OPENAI_API_BASE = '{OPENAI_API_BASE}'", flush=True)
+
+if _raw_emb_model:
+    OPENAI_EMBEDDING_MODEL = _raw_emb_model
+    print(f"[config] OPENAI_EMBEDDING_MODEL: from .env = '{_raw_emb_model}'", flush=True)
+else:
+    OPENAI_EMBEDDING_MODEL = ""
+    print(f"[config] OPENAI_EMBEDDING_MODEL: (empty/missing)", flush=True)
 
 # 多模态模型(VL) API配置
 # 如果未独立设置，默认回退到使用 OPENAI_API_KEY/BASE
@@ -152,6 +182,11 @@ def get_openai_client(api_key=None, base_url=None):
     # Fallback to defaults if None is passed
     if api_key is None: api_key = OPENAI_API_KEY
     if base_url is None: base_url = OPENAI_API_BASE
+    
+    # Log what we're using
+    _masked = f"{api_key[:8]}...{api_key[-4:]}" if api_key and len(api_key) > 12 else "(empty)"
+    print(f"[get_openai_client] api_key: {_masked}", flush=True)
+    print(f"[get_openai_client] base_url: {base_url if base_url else '(empty/default)'}", flush=True)
     
     # Prepare arguments
     kwargs = {
