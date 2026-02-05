@@ -52,13 +52,26 @@ if not kbs:
     st.warning("⚠️ 请先在【知识库管理】中添加知识库")
     st.stop()
 
-selected_kb = st.selectbox("📚 选择知识库", kbs)
+# Define layout columns for header
+col_kb, col_btn = st.columns([3, 1], vertical_alignment="end")
+
+with col_kb:
+    # Get last selected from session state or default
+    default_kb_index = 0
+    if "current_view_kb" in st.session_state and st.session_state.current_view_kb in kbs:
+        default_kb_index = kbs.index(st.session_state.current_view_kb)
+    
+    selected_kb = st.selectbox("📚 选择知识库", kbs, index=default_kb_index)
 
 # Handle KB switch: Clear state to force reload
 if "current_view_kb" not in st.session_state or st.session_state.current_view_kb != selected_kb:
     st.session_state.current_view_kb = selected_kb
     st.session_state.pop("outline_result", None)
     st.session_state.pop("pdf_data", None) # Clear generated PDF cache
+
+# Now fetch the status for the ACTUAL selected KB
+existing_outline = question_db.get_outline(selected_kb)
+current_status = existing_outline.get("status") if existing_outline else None
 
 def run_background_generate(kb_name):
     """后台生成函数"""
@@ -79,27 +92,8 @@ def run_background_generate(kb_name):
         db = QuestionDB()
         db.save_outline(kb_name, f"❌ 生成失败: {str(e)}", status="failed")
 
-# Check for existing outline and status
-existing_outline = question_db.get_outline(selected_kb)
-current_status = existing_outline.get("status") if existing_outline else None
-
-# Handle UI based on status
-if current_status == "processing":
-    st.info("⏳ **大纲正在生成/修改中...** 您可以先去其他页面看看，处理过程可能需要 30-60 秒。")
-    if st.button("🔄 刷新查看状态", use_container_width=True):
-        st.rerun()
-    st.stop()
-
-if existing_outline and current_status == "completed" and "outline_result" not in st.session_state:
-    st.session_state.outline_result = existing_outline["content"]
-    st.info(f"📅 已加载历史大纲 (生成时间: {time.strftime('%Y-%m-%d %H:%M', time.localtime(existing_outline['timestamp']))})")
-
-if current_status == "failed":
-    st.error(existing_outline["content"])
-
-col_gen, _ = st.columns([1, 1])
-with col_gen:
-    btn_label = "🚀 生成/重新生成大纲" if current_status != "completed" else "🔄 重新生成大纲"
+with col_btn:
+    btn_label = "🚀 生成大纲" if current_status != "completed" else "🔄 重新生成"
     if st.button(btn_label, type="primary", use_container_width=True):
         # Auto-vectorization check
         temp_agent = RAGAgent(kb_name=selected_kb)
@@ -122,9 +116,23 @@ with col_gen:
         
         # Set local status to avoid race condition before first DB write in thread
         question_db.save_outline(selected_kb, "（生成中...）", status="processing")
-        st.success("✅ 已开始后台生成！请在几秒后手动刷新页面。")
-        time.sleep(1) # Give thread a moment to start
+        st.success("✅ 已开始后台生成！")
+        time.sleep(0.5)
         st.rerun()
+
+# Check for existing outline and status
+if current_status == "processing":
+    st.info("⏳ **大纲正在生成/修改中...**")
+    if st.button("🔄 刷新查看状态", use_container_width=True):
+        st.rerun()
+    st.stop()
+
+if existing_outline and current_status == "completed" and "outline_result" not in st.session_state:
+    st.session_state.outline_result = existing_outline["content"]
+    st.info(f"📅 已加载历史大纲 (生成时间: {time.strftime('%Y-%m-%d %H:%M', time.localtime(existing_outline['timestamp']))})")
+
+if current_status == "failed":
+    st.error(existing_outline["content"])
 
 if "outline_result" in st.session_state:
     outline = st.session_state.outline_result
@@ -151,6 +159,7 @@ if "outline_result" in st.session_state:
         """
         st.markdown(html, unsafe_allow_html=True)
         st.success(success_msg)
+        st.toast("已保存在系统“下载”文件夹")
         
         st.download_button(
             label=f"💾 点击保存 {filename}",
@@ -166,15 +175,8 @@ if "outline_result" in st.session_state:
     dl_col1, dl_col2, dl_col3 = st.columns(3)
     
     with dl_col1:
-        st.download_button(
-            label="⬇️ 下载 Markdown (.md)",
-            data=outline,
-            file_name=f"{selected_kb}_大纲.md",
-            mime="text/markdown",
-            use_container_width=True,
-            type="secondary",
-            key="dl_md_btn_v3"
-        )
+        if st.button("⬇️ 下载 Markdown (.md)", use_container_width=True, type="secondary", key="dl_md_btn_v4"):
+            auto_download_file(outline.encode('utf-8'), f"{selected_kb}_大纲.md", "text/markdown", "md", "✅ Markdown 已就绪")
     
     with dl_col2:
         gen_pdf_clicked = st.button("⬇️ 生成并下载 PDF", use_container_width=True, type="secondary", key="gen_pdf_btn_final")

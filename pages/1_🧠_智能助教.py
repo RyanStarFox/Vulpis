@@ -177,7 +177,7 @@ if needs_response:
     prompt = last_msg["content"]
     current_image_data = last_msg.get("image_base64", None)
     
-    with st.chat_message("assistant", avatar="🤖"):
+    with st.chat_message("assistant", avatar="🦊"):
         message_placeholder = st.empty()
         full_response = ""
         
