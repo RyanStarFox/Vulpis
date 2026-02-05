@@ -16,21 +16,35 @@ def main():
     for size, name in sizes:
         resized = img.resize((size, size), Image.LANCZOS)
         resized.save(os.path.join(icons_dir, name), 'PNG')
-        print(f'Created {name}')
-    
     # Create ICO for Windows
-    # Use larger sizes first to ensure high quality if only the first one is saved
-    ico_sizes = [(256, 256), (128, 128), (64, 64), (48, 48), (32, 32), (16, 16)]
-    ico_images = [img.resize(size, Image.LANCZOS) for size in ico_sizes]
-    print(f"Generating ICO with {len(ico_images)} images: {ico_sizes}")
-    
-    ico_path = os.path.join(icons_dir, 'icon.ico')
-    if os.path.exists(ico_path):
-        os.remove(ico_path)
-    
-    # Use append_images to include all sizes, exclude the first one which is self
-    ico_images[0].save(ico_path, format='ICO', append_images=ico_images[1:])
-    print('Created icon.ico')
+    try:
+        import subprocess
+        # Try using ImageMagick which produces better multi-size ICOs
+        print("Trying to generate ICO using ImageMagick...")
+        subprocess.run([
+            "magick", "convert", source, 
+            "-define", "icon:auto-resize=256,128,64,48,32,16", 
+            os.path.join(icons_dir, "icon.ico")
+        ], check=True)
+        print("Created icon.ico using ImageMagick")
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        print("ImageMagick not found or failed, falling back to Pillow")
+        # Fallback to Pillow (Note: Pillow ICO support can be tricky with multiple sizes)
+        # Use larger sizes first to ensure high quality if only the first one is saved
+        ico_sizes = [(256, 256), (128, 128), (64, 64), (48, 48), (32, 32), (16, 16)]
+        ico_images = [img.resize(size, Image.LANCZOS) for size in ico_sizes]
+        print(f"Generating ICO with {len(ico_images)} images: {ico_sizes}")
+        
+        ico_path = os.path.join(icons_dir, 'icon.ico')
+        if os.path.exists(ico_path):
+            try:
+                os.remove(ico_path)
+            except OSError:
+                pass
+        
+        # Use append_images to include all sizes, exclude the first one which is self
+        ico_images[0].save(ico_path, format='ICO', append_images=ico_images[1:])
+        print('Created icon.ico using Pillow')
     
     # Create iconset for macOS
     iconset_dir = os.path.join(icons_dir, 'icon.iconset')
