@@ -53,7 +53,7 @@ if not kbs:
     st.stop()
 
 # Define layout columns for header
-col_kb, col_btn = st.columns([3, 1], vertical_alignment="bottom")
+col_kb, col_btn = st.columns([1, 1], vertical_alignment="bottom")
 
 with col_kb:
     # Get last selected from session state or default
