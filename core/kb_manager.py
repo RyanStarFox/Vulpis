@@ -46,6 +46,70 @@ class KBManager:
                 print(f"Error deleting collection: {e}")
             return True
         return False
+    
+    def rename_kb(self, old_name, new_name):
+        """
+        重命名知识库
+        
+        Args:
+            old_name: 原知识库名称
+            new_name: 新知识库名称
+            
+        Returns:
+            bool: 成功返回 True，失败返回 False
+        """
+        # 检查新名称是否已存在
+        if new_name in self.list_kbs():
+            return False
+        
+        # 检查旧名称是否存在
+        old_path = os.path.join(self.base_dir, old_name)
+        if not os.path.exists(old_path):
+            return False
+        
+        # 重命名目录
+        new_path = os.path.join(self.base_dir, new_name)
+        try:
+            os.rename(old_path, new_path)
+            
+            # 重命名向量数据库集合
+            try:
+                old_vs = VectorStore(collection_name=old_name)
+                # ChromaDB 不支持直接重命名，需要创建新集合并复制数据
+                # 获取所有数据
+                collection = old_vs.collection
+                all_data = collection.get(include=['embeddings', 'documents', 'metadatas'])
+                
+                if all_data['ids']:
+                    # 创建新集合
+                    new_vs = VectorStore(collection_name=new_name)
+                    # 添加所有数据到新集合
+                    new_vs.collection.add(
+                        ids=all_data['ids'],
+                        embeddings=all_data['embeddings'],
+                        documents=all_data['documents'],
+                        metadatas=all_data['metadatas']
+                    )
+                
+                # 删除旧集合
+                old_vs.delete_collection(old_name)
+            except Exception as e:
+                print(f"Error renaming vector collection: {e}")
+                # 即使向量数据库重命名失败，文件夹已经重命名，仍然返回 True
+            
+            # 更新 question_db 中的相关记录
+            try:
+                from core.question_db import QuestionDB
+                qdb = QuestionDB()
+                # 更新大纲记录
+                qdb.rename_kb_outline(old_name, new_name)
+            except Exception as e:
+                print(f"Error updating question_db: {e}")
+            
+            return True
+        except Exception as e:
+            print(f"Error renaming KB: {e}")
+            return False
 
     def list_files(self, kb_name):
         path = os.path.join(self.base_dir, kb_name)

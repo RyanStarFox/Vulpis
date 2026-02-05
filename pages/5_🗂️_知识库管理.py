@@ -37,6 +37,31 @@ def confirm_delete_dialog(kb_name):
         else:
             st.error("删除失败")
 
+@st.dialog("✏️ 重命名知识库")
+def rename_kb_dialog(old_name):
+    st.info(f"当前知识库名称：**{old_name}**")
+    new_name = st.text_input("新名称", placeholder="输入新的知识库名称")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("确认重命名", type="primary", use_container_width=True):
+            if not new_name:
+                st.error("请输入新名称")
+            elif new_name == old_name:
+                st.warning("新名称与旧名称相同")
+            else:
+                manager = KBManager()
+                if manager.rename_kb(old_name, new_name):
+                    st.success(f"已将 '{old_name}' 重命名为 '{new_name}'")
+                    time.sleep(1)
+                    st.rerun()
+                else:
+                    st.error("重命名失败：新名称已存在或操作失败")
+    with col2:
+        if st.button("取消", use_container_width=True):
+            st.rerun()
+
+
 st.set_page_config(page_title="知识库管理", page_icon="logo.png", layout="wide")
 
 st.markdown(f"""
@@ -156,6 +181,9 @@ else:
                      st.rerun()
 
                 st.markdown("---")
+                
+                if st.button("✏️ 重命名知识库", key=f"rename_kb_{kb}", use_container_width=True):
+                    rename_kb_dialog(kb)
 
                 if st.button("🗑️ 删除整个知识库", key=f"del_kb_{kb}", type="primary", use_container_width=True):
                     confirm_delete_dialog(kb)

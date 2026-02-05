@@ -359,6 +359,14 @@ class QuestionDB:
                     'timestamp': row['timestamp']
                 }
             return None
+    
+    def rename_kb_outline(self, old_kb_name, new_kb_name):
+        """Update outline records when a knowledge base is renamed."""
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                UPDATE outlines SET kb_name = ? WHERE kb_name = ?
+            ''', (new_kb_name, old_kb_name))
 
     def get_wrong_questions(self, kb_name=None, mistake_book=None):
         """获取错题
