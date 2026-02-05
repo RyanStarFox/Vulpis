@@ -19,9 +19,17 @@ def main():
         print(f'Created {name}')
     
     # Create ICO for Windows
-    ico_sizes = [(16, 16), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)]
+    # Use larger sizes first to ensure high quality if only the first one is saved
+    ico_sizes = [(256, 256), (128, 128), (64, 64), (48, 48), (32, 32), (16, 16)]
     ico_images = [img.resize(size, Image.LANCZOS) for size in ico_sizes]
-    ico_images[0].save(os.path.join(icons_dir, 'icon.ico'), format='ICO', sizes=ico_sizes)
+    print(f"Generating ICO with {len(ico_images)} images: {ico_sizes}")
+    
+    ico_path = os.path.join(icons_dir, 'icon.ico')
+    if os.path.exists(ico_path):
+        os.remove(ico_path)
+    
+    # Use append_images to include all sizes, exclude the first one which is self
+    ico_images[0].save(ico_path, format='ICO', append_images=ico_images[1:])
     print('Created icon.ico')
     
     # Create iconset for macOS
