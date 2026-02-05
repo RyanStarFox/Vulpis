@@ -81,11 +81,13 @@ def _init_module_log():
         
         log_dir = get_user_data_dir()
         log_file = os.path.join(log_dir, 'vulpis_app.log')
+        
+        from logging.handlers import RotatingFileHandler
         logging.basicConfig(
             level=logging.DEBUG,
             format='%(asctime)s - %(levelname)s - %(message)s',
             handlers=[
-                logging.FileHandler(log_file, mode='a', encoding='utf-8'),
+                RotatingFileHandler(log_file, maxBytes=5*1024*1024, backupCount=3, encoding='utf-8'),
                 logging.StreamHandler(sys.stdout)
             ],
             force=True
