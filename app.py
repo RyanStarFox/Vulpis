@@ -572,7 +572,7 @@ def main_ui():
         """, unsafe_allow_html=True)
 
     st.markdown("---")
-    st.caption("© 2025 [CS4314 Project, Developed by RyanStarFox and Zhou Zihan](https://github.com/RyanStarFox/CS4314_NLP_Proj2)")
+    st.caption("© 2025 [CS4314 Project Vulpis, Developed by RyanStarFox and Zhou Zihan](https://github.com/RyanStarFox/Vulpis)")
 
 if __name__ == "__main__":
     if get_script_run_ctx():

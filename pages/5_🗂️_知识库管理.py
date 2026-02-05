@@ -107,84 +107,91 @@ else:
     # 按照您的要求，每个一级子文件夹（如 cs_math, docx_test 等）都是一个独立的知识库
     for kb in kbs:
         with st.expander(f"📁 {kb}", expanded=False):
-            col1, col2 = st.columns([3, 1])
+            col1, col2 = st.columns([2, 1], gap="medium")
             
             with col1:
-                files = kb_manager.list_files(kb)
-                st.markdown(f"**包含文档 ({len(files)}):**")
-                for f in files:
-                    c1, c2 = st.columns([4, 1])
-                    c1.text(f"📄 {f}")
-                    if c2.button("🗑️", key=f"del_file_{kb}_{f}"):
-                        kb_manager.delete_file(kb, f)
-                        st.rerun()
-                
-                st.markdown("---")
-                st.markdown("**📤 上传新文档:**")
-                st.caption("💡 支持格式：PDF, PPTX, DOCX, MD, TXT")
-                # Use dynamic key to allow clearing after upload
-                uploader_key_name = f"uploader_key_{kb}"
-                current_key_val = st.session_state.get(uploader_key_name, 0)
-                
-                uploaded_files = st.file_uploader(
-                    f"上传文件到 {kb}", 
-                    accept_multiple_files=True, 
-                    type=["pdf", "pptx", "docx", "md", "txt"],
-                    key=f"up_{kb}_{current_key_val}"
-                )
+                with st.container():
+                    files = kb_manager.list_files(kb)
+                    st.markdown(f"**包含文档 ({len(files)}):**")
+                    if files:
+                        for f in files:
+                            c1, c2 = st.columns([4, 1])
+                            c1.text(f"📄 {f}")
+                            if c2.button("🗑️", key=f"del_file_{kb}_{f}"):
+                                kb_manager.delete_file(kb, f)
+                                st.rerun()
+                    else:
+                        st.caption("_暂无文档_")
+                    
+                    st.markdown("---")
+                    st.markdown("**📤 上传新文档:**")
+                    st.caption("💡 支持格式：PDF, PPTX, DOCX, MD, TXT")
+                    # Use dynamic key to allow clearing after upload
+                    uploader_key_name = f"uploader_key_{kb}"
+                    current_key_val = st.session_state.get(uploader_key_name, 0)
+                    
+                    uploaded_files = st.file_uploader(
+                        f"上传文件到 {kb}", 
+                        accept_multiple_files=True, 
+                        type=["pdf", "pptx", "docx", "md", "txt"],
+                        key=f"up_{kb}_{current_key_val}"
+                    )
 
-                if uploaded_files:
-                    if st.button("确认上传并处理", key=f"btn_up_{kb}"):
-                        with st.spinner("正在处理文件并更新向量数据库（请勿关闭页面）..."):
-                            for uf in uploaded_files:
-                                kb_manager.add_file(kb, uf)
-                        
-                        st.success("✅ 上传并处理成功！")
-                        
-                        # Increment key to reset uploader component
-                        st.session_state[uploader_key_name] = current_key_val + 1
-                        time.sleep(1.5)
-                        st.rerun()
+                    if uploaded_files:
+                        if st.button("确认上传并处理", key=f"btn_up_{kb}"):
+                            with st.spinner("正在处理文件并更新向量数据库（请勿关闭页面）..."):
+                                for uf in uploaded_files:
+                                    kb_manager.add_file(kb, uf)
+                            
+                            st.success("✅ 上传并处理成功！")
+                            
+                            # Increment key to reset uploader component
+                            st.session_state[uploader_key_name] = current_key_val + 1
+                            time.sleep(1.5)
+                            st.rerun()
+
 
             with col2:
-                st.markdown("#### 操作")
-                
-                if st.button("📂 打开本地文件夹", key=f"open_dir_{kb}", use_container_width=True):
-                    kb_path = os.path.join(kb_manager.base_dir, kb)
-                    import subprocess, platform
-                    try:
-                        if platform.system() == "Darwin":
-                            subprocess.Popen(["open", kb_path])
-                        elif platform.system() == "Windows":
-                            os.startfile(kb_path)
-                        else:
-                            subprocess.Popen(["xdg-open", kb_path])
-                        st.toast("已打开文件夹，变更文件后请点击【⚡️ 更新增量索引】")
-                    except Exception as e:
-                        st.error(f"打开文件夹失败: {e}")
-                
-                if st.button("⚡️ 更新增量索引 (推荐)", key=f"sync_{kb}", use_container_width=True, help="仅处理新增或删除的文件，速度更快"):
-                     with st.spinner("正在扫描并同步文件变更..."):
-                         added, removed = kb_manager.update_kb_index(kb)
-                     if added == 0 and removed == 0:
-                         st.info("索引已是最新")
-                     else:
-                         st.success(f"✅ 同步完成：新增 {added} 个，移除 {removed} 个")
-                     time.sleep(1.5)
-                     st.rerun()
+                # Use container to ensure consistent spacing
+                with st.container():
+                    st.markdown("#### 操作")
+                    
+                    if st.button("📂 打开本地文件夹", key=f"open_dir_{kb}", use_container_width=True):
+                        kb_path = os.path.join(kb_manager.base_dir, kb)
+                        import subprocess, platform
+                        try:
+                            if platform.system() == "Darwin":
+                                subprocess.Popen(["open", kb_path])
+                            elif platform.system() == "Windows":
+                                os.startfile(kb_path)
+                            else:
+                                subprocess.Popen(["xdg-open", kb_path])
+                            st.toast("已打开文件夹，变更文件后请点击【⚡️ 更新增量索引】")
+                        except Exception as e:
+                            st.error(f"打开文件夹失败: {e}")
+                    
+                    if st.button("⚡️ 更新增量索引 (推荐)", key=f"sync_{kb}", use_container_width=True, help="仅处理新增或删除的文件，速度更快"):
+                         with st.spinner("正在扫描并同步文件变更..."):
+                             added, removed = kb_manager.update_kb_index(kb)
+                         if added == 0 and removed == 0:
+                             st.info("索引已是最新")
+                         else:
+                             st.success(f"✅ 同步完成：新增 {added} 个，移除 {removed} 个")
+                         time.sleep(1.5)
+                         st.rerun()
 
-                if st.button("🔄 重建知识库索引 (全量)", key=f"reindex_{kb}", use_container_width=True, help="清空库并重新扫描所有文件（耗时较长）"):
-                     with st.spinner("正在重建索引（文件较多时可能需要几分钟，请耐心等待）..."):
-                         kb_manager.rebuild_kb_index(kb)
-                     st.success("✅ 索引已全量重建")
-                     time.sleep(1.5)
-                     st.rerun()
+                    if st.button("🔄 重建知识库索引 (全量)", key=f"reindex_{kb}", use_container_width=True, help="清空库并重新扫描所有文件（耗时较长）"):
+                         with st.spinner("正在重建索引（文件较多时可能需要几分钟，请耐心等待）..."):
+                             kb_manager.rebuild_kb_index(kb)
+                         st.success("✅ 索引已全量重建")
+                         time.sleep(1.5)
+                         st.rerun()
 
-                st.markdown("---")
-                
-                if st.button("✏️ 重命名知识库", key=f"rename_kb_{kb}", use_container_width=True):
-                    rename_kb_dialog(kb)
+                    st.markdown("---")
+                    
+                    if st.button("✏️ 重命名知识库", key=f"rename_kb_{kb}", use_container_width=True):
+                        rename_kb_dialog(kb)
 
-                if st.button("🗑️ 删除整个知识库", key=f"del_kb_{kb}", type="primary", use_container_width=True):
-                    confirm_delete_dialog(kb)
+                    if st.button("🗑️ 删除整个知识库", key=f"del_kb_{kb}", type="primary", use_container_width=True):
+                        confirm_delete_dialog(kb)
 
