@@ -151,7 +151,7 @@ if "messages" not in st.session_state:
     ]
 
 for message in st.session_state.messages:
-    with st.chat_message(message["role"], avatar="🧑‍🎓" if message["role"] == "user" else "🤖"):
+    with st.chat_message(message["role"], avatar="🧑‍🎓" if message["role"] == "user" else "🦊"):
         if "image_base64" in message and message["image_base64"]:
             st.image(base64.b64decode(message["image_base64"]), width=300)
         st.markdown(message["content"])
@@ -169,14 +169,11 @@ if prompt := st.chat_input("请输入问题..."):
     
     st.rerun()
 
-# Response Logic - only process if last user message needs a response
+# Response Logic - process if last user message needs a response
 last_msg = st.session_state.messages[-1] if st.session_state.messages else None
 needs_response = last_msg and last_msg.get("role") == "user" and last_msg.get("_needs_response", False)
 
 if needs_response:
-    # CRITICAL: Mark as processed immediately to prevent restart on page switch
-    last_msg["_needs_response"] = False
-    
     prompt = last_msg["content"]
     current_image_data = last_msg.get("image_base64", None)
     
@@ -188,31 +185,28 @@ if needs_response:
             # 检查是否是简单的选择题回答
             is_simple_answer = len(prompt) < 10 and "选" in prompt
             
-            # 如果不是简单回答，先检索上下文用于显示参考资料
+            # 检索上下文
             docs = []
             context = ""
             if not is_simple_answer:
                 with st.spinner("正在检索资料..."):
                     context, docs = agent.retrieve_context(prompt)
             
-            # 准备消息 - 显示准备状态
-            message_placeholder.markdown("🤔 正在准备回复...")
+            message_placeholder.markdown("🤔 正在生成回复...")
             
             from core.rag_agent import RAGAgent
             
             # 构建消息
             messages = [{"role": "system", "content": agent.system_prompt}]
             
-            # 添加历史记录（不包括当前消息）
             if st.session_state.messages[:-1]:
                 clean_history = []
-                for msg in st.session_state.messages[:-1][-5:]:  # 只取最近 5 条
+                for msg in st.session_state.messages[:-1][-5:]:
                     content = msg.get("content", "")
                     role = msg.get("role", "user")
                     clean_history.append({"role": role, "content": content})
                 messages.extend(clean_history)
             
-            # 构建用户消息
             if is_simple_answer:
                 user_text = f"""(用户正在回答上一轮的选择题)
 学生回答：{prompt}
@@ -226,7 +220,6 @@ if needs_response:
 学生问题：{prompt}
 """
             
-            # 多模态支持
             if current_image_data:
                 content_payload = [
                     {"type": "text", "text": user_text},
@@ -239,16 +232,16 @@ if needs_response:
             
             messages.append({"role": "user", "content": content_payload})
             
-            # 流式调用 API - 不使用 spinner
+            # 流式调用 API
             stream = agent.client.chat.completions.create(
                 model=current_model,
                 messages=messages,
                 temperature=0.3,
                 max_tokens=1500,
-                stream=True  # 启用流式输出
+                stream=True
             )
             
-            # 真正的流式显示 - 直接渲染，无 spinner
+            # 流式显示
             for chunk in stream:
                 if not chunk.choices:
                     continue
@@ -272,5 +265,8 @@ if needs_response:
             full_response = f"❌ 发生错误: {str(e)}"
             message_placeholder.markdown(full_response)
     
-    # Append assistant response (flag already set to False at start)
+    # 标记已处理并保存响应
+    last_msg["_needs_response"] = False
     st.session_state.messages.append({"role": "assistant", "content": full_response})
+
+
