@@ -208,7 +208,30 @@ if needs_response:
             context = ""
             if not is_simple_answer:
                 with st.spinner("正在检索资料..."):
-                    context, docs = agent.retrieve_context(prompt)
+                    retry_attempted = False
+                    try:
+                        context, docs = agent.retrieve_context(prompt)
+                    except Exception as e:
+                        error_str = str(e)
+                        # Check for ChromaDB collection error (stale handle)
+                        if ("does not exist" in error_str or "Collection" in error_str) and not retry_attempted:
+                            st.warning("⚠️ 检测到知识库索引已更新，正在重新加载智能助教...")
+                            retry_attempted = True
+                            try:
+                                # Reload agent (get fresh collection handle)
+                                st.session_state.agent = RAGAgent(kb_name=selected_kb)
+                                agent = st.session_state.agent
+                                # Retry once
+                                context, docs = agent.retrieve_context(prompt)
+                            except Exception as retry_error:
+                                # If retry also fails, show friendly error and continue without context
+                                st.error(f"❌ 无法连接到知识库索引：{str(retry_error)}")
+                                st.info("💡 提示：请前往【知识库管理】页面检查索引状态，或尝试重建索引。")
+                                context = ""
+                                docs = []
+                        else:
+                            # Other errors or already retried - re-raise
+                            raise e
             
             message_placeholder.markdown("🤔 正在生成回复...")
             

@@ -196,7 +196,15 @@ def get_openai_client(api_key=None, base_url=None):
     # Prepare arguments
     kwargs = {
         "api_key": api_key,
-        "http_client": httpx.Client(verify=False)
+        "http_client": httpx.Client(
+            verify=False,
+            timeout=httpx.Timeout(
+                connect=10.0,  # Connection timeout: 10 seconds
+                read=60.0,     # Read timeout: 60 seconds
+                write=10.0,    # Write timeout: 10 seconds
+                pool=10.0      # Pool timeout: 10 seconds
+            )
+        )
     }
     
     # Only pass base_url if it's not empty, otherwise let OpenAI library use its default
