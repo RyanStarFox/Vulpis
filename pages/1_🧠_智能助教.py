@@ -101,13 +101,33 @@ if selected_kb != stored_kb:
 def get_welcome_message(kb_name):
     return {"role": "assistant", "content": f"👋 你好！我是基于 **{kb_name}** 的智能助教。有什么我可以帮你的吗？"}
 
+# 获取知识库的索引版本（用于检测更新）
+def get_kb_index_version(kb_name):
+    """获取知识库的索引版本号（文档数量作为简单版本标识）"""
+    try:
+        from core.rag_agent import RAGAgent
+        temp_agent = RAGAgent(kb_name=kb_name)
+        return temp_agent.vector_store.get_collection_count()
+    except:
+        return 0
+
 # Initialize Agent - 处理知识库切换和首次加载
 kb_changed = st.session_state.get("agent_kb") != selected_kb
 
-if "agent" not in st.session_state or kb_changed:
+# 检测索引是否已更新（新增/删除文件）
+current_version = get_kb_index_version(selected_kb)
+cached_version = st.session_state.get(f"kb_version_{selected_kb}", -1)
+index_updated = (cached_version != -1 and current_version != cached_version)
+
+if "agent" not in st.session_state or kb_changed or index_updated:
+    # 如果是索引更新触发的重载，显示提示
+    if index_updated and not kb_changed:
+        st.toast(f"🔄 检测到知识库已更新（文档数：{cached_version} → {current_version}），正在重新加载...", icon="🔄")
+    
     with st.spinner(f"正在加载知识库 {selected_kb}..."):
         st.session_state.agent = RAGAgent(kb_name=selected_kb)
         st.session_state.agent_kb = selected_kb
+        st.session_state[f"kb_version_{selected_kb}"] = current_version
         
         # Auto-vectorization check
         count = st.session_state.agent.vector_store.get_collection_count()
@@ -119,16 +139,18 @@ if "agent" not in st.session_state or kb_changed:
                 with st.spinner("正在进行向量化处理，请耐心等待..."):
                     kb_manager.rebuild_kb_index(selected_kb)
                 st.success("✅ 向量化完成！")
+                time.sleep(1.5)  # 让用户看到成功消息
                 # 重新创建 RAGAgent 以加载新的向量数据
-                # 关键修复：强制重新创建 VectorStore 实例
                 st.session_state.agent = RAGAgent(kb_name=selected_kb)
+                st.session_state[f"kb_version_{selected_kb}"] = st.session_state.agent.vector_store.get_collection_count()
         
         # 尝试从数据库加载历史对话
         saved_history = question_db.get_chat_history(selected_kb)
         if saved_history and saved_history.get('messages'):
             st.session_state.messages = saved_history['messages']
             # 显示恢复提示
-            st.toast(f"已恢复上次对话 ({len(saved_history['messages'])} 条消息)")
+            if not index_updated:  # 只在非索引更新时显示
+                st.toast(f"已恢复上次对话 ({len(saved_history['messages'])} 条消息)")
         else:
             st.session_state.messages = [get_welcome_message(selected_kb)]
         
@@ -209,22 +231,29 @@ if needs_response:
             if not is_simple_answer:
                 with st.spinner("正在检索资料..."):
                     retry_attempted = False
+                    warning_placeholder = st.empty()  # 用于显示可清除的警告
                     try:
                         context, docs = agent.retrieve_context(prompt)
                     except Exception as e:
                         error_str = str(e)
                         # Check for ChromaDB collection error (stale handle)
                         if ("does not exist" in error_str or "Collection" in error_str) and not retry_attempted:
-                            st.warning("⚠️ 检测到知识库索引已更新，正在重新加载智能助教...")
+                            warning_placeholder.warning("⚠️ 检测到知识库索引已更新，正在重新加载智能助教...")
                             retry_attempted = True
                             try:
                                 # Reload agent (get fresh collection handle)
                                 st.session_state.agent = RAGAgent(kb_name=selected_kb)
                                 agent = st.session_state.agent
+                                # Update version cache
+                                st.session_state[f"kb_version_{selected_kb}"] = agent.vector_store.get_collection_count()
                                 # Retry once
                                 context, docs = agent.retrieve_context(prompt)
+                                # Clear warning and show success toast
+                                warning_placeholder.empty()
+                                st.toast("✅ 智能助教已重新加载", icon="✅")
                             except Exception as retry_error:
                                 # If retry also fails, show friendly error and continue without context
+                                warning_placeholder.empty()
                                 st.error(f"❌ 无法连接到知识库索引：{str(retry_error)}")
                                 st.info("💡 提示：请前往【知识库管理】页面检查索引状态，或尝试重建索引。")
                                 context = ""
