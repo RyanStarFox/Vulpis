@@ -231,16 +231,18 @@ if needs_response:
             if not is_simple_answer:
                 with st.spinner("正在检索资料..."):
                     retry_attempted = False
-                    warning_placeholder = st.empty()  # 用于显示可清除的警告
+                    reload_notification = st.empty()  # 用于显示重载通知
                     try:
                         context, docs = agent.retrieve_context(prompt)
                     except Exception as e:
                         error_str = str(e)
                         # Check for ChromaDB collection error (stale handle)
                         if ("does not exist" in error_str or "Collection" in error_str) and not retry_attempted:
-                            warning_placeholder.warning("⚠️ 检测到知识库索引已更新，正在重新加载智能助教...")
                             retry_attempted = True
                             try:
+                                # Show reload notification
+                                reload_notification.info("🔄 检测到知识库索引已重建，正在重新加载智能助教...")
+                                
                                 # Reload agent (get fresh collection handle)
                                 st.session_state.agent = RAGAgent(kb_name=selected_kb)
                                 agent = st.session_state.agent
@@ -248,12 +250,12 @@ if needs_response:
                                 st.session_state[f"kb_version_{selected_kb}"] = agent.vector_store.get_collection_count()
                                 # Retry once
                                 context, docs = agent.retrieve_context(prompt)
-                                # Clear warning and show success toast
-                                warning_placeholder.empty()
-                                st.toast("✅ 智能助教已重新加载", icon="✅")
+                                
+                                # Clear notification after successful reload
+                                reload_notification.empty()
                             except Exception as retry_error:
                                 # If retry also fails, show friendly error and continue without context
-                                warning_placeholder.empty()
+                                reload_notification.empty()
                                 st.error(f"❌ 无法连接到知识库索引：{str(retry_error)}")
                                 st.info("💡 提示：请前往【知识库管理】页面检查索引状态，或尝试重建索引。")
                                 context = ""
