@@ -134,6 +134,128 @@ def start_rebuild_task(kb_name, kb_manager_cls):
     t.start()
     return task_id
 
+def start_update_index_task(kb_name, kb_manager_cls):
+    """
+    Start a background thread to update KB index incrementally.
+    """
+    task_id = f"update_{kb_name}_{int(time.time())}"
+    
+    TASKS[task_id] = {
+        "type": "update",
+        "status": "running",
+        "message": "正在检测变更...",
+        "progress": 0.0,
+        "kb_name": kb_name
+    }
+    
+    def worker():
+        try:
+            manager = kb_manager_cls()
+            TASKS[task_id]["message"] = "正在同步索引..."
+            TASKS[task_id]["progress"] = 0.3
+            
+            added, removed = manager.update_kb_index(kb_name)
+            
+            TASKS[task_id]["status"] = "completed"
+            if added == 0 and removed == 0:
+                TASKS[task_id]["message"] = "索引已是最新"
+            else:
+                TASKS[task_id]["message"] = f"同步完成：+{added}, -{removed}"
+            TASKS[task_id]["progress"] = 1.0
+            TASKS[task_id]["result"] = {"added": added, "removed": removed}
+        except Exception as e:
+            TASKS[task_id]["status"] = "failed"
+            TASKS[task_id]["message"] = f"更新失败: {str(e)}"
+            print(f"Update task failed: {e}")
+
+    t = threading.Thread(target=worker, daemon=True)
+    t.start()
+    return task_id
+
+
+def start_upload_task(kb_name, uploaded_files_data, kb_manager_cls):
+    """
+    Start a background thread to process uploaded files.
+    uploaded_files_data: list of tuples [(filename, file_bytes), ...]
+    """
+    task_id = f"upload_{kb_name}_{int(time.time())}"
+    
+    TASKS[task_id] = {
+        "type": "upload",
+        "status": "running",
+        "message": "准备上传文件...",
+        "progress": 0.0,
+        "kb_name": kb_name,
+        "total_files": len(uploaded_files_data),
+        "processed_files": 0
+    }
+    
+    def worker():
+        import os
+        from core.config import DATA_DIR
+        try:
+            manager = kb_manager_cls()
+            total = len(uploaded_files_data)
+            
+            for i, (filename, file_bytes) in enumerate(uploaded_files_data):
+                TASKS[task_id]["message"] = f"正在处理: {filename} ({i+1}/{total})"
+                TASKS[task_id]["progress"] = i / total
+                TASKS[task_id]["processed_files"] = i
+                
+                # Save file to disk
+                kb_path = os.path.join(DATA_DIR, kb_name)
+                if not os.path.exists(kb_path):
+                    os.makedirs(kb_path)
+                file_path = os.path.join(kb_path, filename)
+                with open(file_path, "wb") as f:
+                    f.write(file_bytes)
+                
+                # Add to index
+                try:
+                    manager.add_single_file_to_index(kb_name, filename)
+                except Exception as e:
+                    print(f"Error indexing {filename}: {e}")
+            
+            TASKS[task_id]["status"] = "completed"
+            TASKS[task_id]["message"] = f"上传完成: {total} 个文件"
+            TASKS[task_id]["progress"] = 1.0
+            TASKS[task_id]["processed_files"] = total
+            
+        except Exception as e:
+            TASKS[task_id]["status"] = "failed"
+            TASKS[task_id]["message"] = f"上传失败: {str(e)}"
+            print(f"Upload task failed: {e}")
+
+    t = threading.Thread(target=worker, daemon=True)
+    t.start()
+    return task_id
+
+
+def get_kb_active_tasks(kb_name):
+    """Get all active (running) tasks for a specific KB."""
+    return {
+        k: v for k, v in TASKS.items() 
+        if v.get("kb_name") == kb_name and v["status"] == "running"
+    }
+
+
+def get_kb_recent_tasks(kb_name, max_age_seconds=30):
+    """Get recent completed/failed tasks for a KB (within max_age_seconds)."""
+    import time as t
+    current = t.time()
+    result = {}
+    for k, v in TASKS.items():
+        if v.get("kb_name") == kb_name and v["status"] in ["completed", "failed"]:
+            # Check task age from task_id timestamp
+            try:
+                task_time = int(k.split("_")[-1])
+                if current - task_time < max_age_seconds:
+                    result[k] = v
+            except:
+                pass
+    return result
+
+
 def clear_completed_tasks():
     to_remove = [k for k, v in TASKS.items() if v["status"] in ["completed", "failed"]]
     for k in to_remove:

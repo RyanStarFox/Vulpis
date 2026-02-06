@@ -510,3 +510,67 @@ class QuestionDB:
             ''', (mistake_book,))
             
             return [self._question_row_to_dict(row, mistake_book) for row in cursor.fetchall()]
+
+    # ========== 聊天历史相关方法 ==========
+    
+    def save_chat_history(self, kb_name, messages):
+        """保存智能助教的对话历史
+        
+        Args:
+            kb_name: 知识库名称
+            messages: 消息列表 [{"role": "user/assistant", "content": "..."}, ...]
+        """
+        import json
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            # 序列化消息，过滤掉 _needs_response 等内部标记
+            clean_messages = []
+            for msg in messages:
+                clean_msg = {
+                    "role": msg.get("role"),
+                    "content": msg.get("content")
+                }
+                # 保留图片数据
+                if "image_base64" in msg:
+                    clean_msg["image_base64"] = msg["image_base64"]
+                clean_messages.append(clean_msg)
+            
+            messages_json = json.dumps(clean_messages, ensure_ascii=False)
+            cursor.execute('''
+                INSERT OR REPLACE INTO chat_history (kb_name, messages, updated_at)
+                VALUES (?, ?, ?)
+            ''', (kb_name, messages_json, time.time()))
+    
+    def get_chat_history(self, kb_name):
+        """获取智能助教的对话历史
+        
+        Args:
+            kb_name: 知识库名称
+            
+        Returns:
+            消息列表，如果不存在则返回 None
+        """
+        import json
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT messages, updated_at FROM chat_history WHERE kb_name = ?
+            ''', (kb_name,))
+            row = cursor.fetchone()
+            if row:
+                return {
+                    'messages': json.loads(row['messages']),
+                    'updated_at': row['updated_at']
+                }
+            return None
+    
+    def clear_chat_history(self, kb_name):
+        """清空指定知识库的对话历史
+        
+        Args:
+            kb_name: 知识库名称
+        """
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('DELETE FROM chat_history WHERE kb_name = ?', (kb_name,))
+

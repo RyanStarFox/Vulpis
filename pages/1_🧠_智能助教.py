@@ -34,6 +34,7 @@ try:
     from core.kb_manager import KBManager
     from core import ui_components
     from core.rag_agent import RAGAgent
+    from core.question_db import QuestionDB
 except ImportError as e:
     st.error(f"❌ CRITICAL IMPORT ERROR: {e}")
     st.info("Check the debug info above to see the search paths.")
@@ -78,6 +79,7 @@ st.title("🧠 智能助教")
 
 # KB Selection with persistence
 kb_manager = KBManager()
+question_db = QuestionDB()
 kbs = kb_manager.list_kbs()
 
 if not kbs:
@@ -95,8 +97,14 @@ selected_kb = st.sidebar.selectbox("📚 选择知识库", kbs, index=default_in
 if selected_kb != stored_kb:
     set_last_selected_kb(selected_kb)
 
-# Initialize Agent
-if "agent" not in st.session_state or st.session_state.get("agent_kb") != selected_kb:
+# 定义默认欢迎消息
+def get_welcome_message(kb_name):
+    return {"role": "assistant", "content": f"👋 你好！我是基于 **{kb_name}** 的智能助教。有什么我可以帮你的吗？"}
+
+# Initialize Agent - 处理知识库切换和首次加载
+kb_changed = st.session_state.get("agent_kb") != selected_kb
+
+if "agent" not in st.session_state or kb_changed:
     with st.spinner(f"正在加载知识库 {selected_kb}..."):
         st.session_state.agent = RAGAgent(kb_name=selected_kb)
         st.session_state.agent_kb = selected_kb
@@ -111,12 +119,19 @@ if "agent" not in st.session_state or st.session_state.get("agent_kb") != select
                 with st.spinner("正在进行向量化处理，请耐心等待..."):
                     kb_manager.rebuild_kb_index(selected_kb)
                 st.success("✅ 向量化完成！")
-                # Reload agent to see new data
+                # 重新创建 RAGAgent 以加载新的向量数据
+                # 关键修复：强制重新创建 VectorStore 实例
                 st.session_state.agent = RAGAgent(kb_name=selected_kb)
         
-        st.session_state.messages = [
-            {"role": "assistant", "content": f"👋 你好！我是基于 **{selected_kb}** 的智能助教。有什么我可以帮你的吗？"}
-        ]
+        # 尝试从数据库加载历史对话
+        saved_history = question_db.get_chat_history(selected_kb)
+        if saved_history and saved_history.get('messages'):
+            st.session_state.messages = saved_history['messages']
+            # 显示恢复提示
+            st.toast(f"已恢复上次对话 ({len(saved_history['messages'])} 条消息)")
+        else:
+            st.session_state.messages = [get_welcome_message(selected_kb)]
+        
         # Reset uploader key
         st.session_state.uploader_key = 0
 
@@ -138,17 +153,20 @@ with st.sidebar:
     
     st.markdown("---")
     if st.button("🗑️ 清空对话历史"):
-        st.session_state.messages = [
-            {"role": "assistant", "content": f"对话已重置。我是基于 **{selected_kb}** 的智能助教。"}
-        ]
+        st.session_state.messages = [get_welcome_message(selected_kb)]
         st.session_state.uploader_key = st.session_state.get("uploader_key", 0) + 1
+        # 清空数据库中的历史
+        question_db.clear_chat_history(selected_kb)
         st.rerun()
 
 # Chat History
 if "messages" not in st.session_state:
-    st.session_state.messages = [
-        {"role": "assistant", "content": f"👋 你好！我是基于 **{selected_kb}** 的智能助教。有什么我可以帮你的吗？"}
-    ]
+    # 尝试从数据库加载
+    saved_history = question_db.get_chat_history(selected_kb)
+    if saved_history and saved_history.get('messages'):
+        st.session_state.messages = saved_history['messages']
+    else:
+        st.session_state.messages = [get_welcome_message(selected_kb)]
 
 for message in st.session_state.messages:
     with st.chat_message(message["role"], avatar="🧑‍🎓" if message["role"] == "user" else "🦊"):
@@ -268,5 +286,8 @@ if needs_response:
     # 标记已处理并保存响应
     last_msg["_needs_response"] = False
     st.session_state.messages.append({"role": "assistant", "content": full_response})
+    
+    # 保存对话历史到数据库
+    question_db.save_chat_history(selected_kb, st.session_state.messages)
 
 

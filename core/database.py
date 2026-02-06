@@ -124,6 +124,15 @@ def init_db():
             )
         ''')
         
+        # 聊天历史表 (每个知识库保存一段对话)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS chat_history (
+                kb_name TEXT PRIMARY KEY,
+                messages TEXT,
+                updated_at REAL
+            )
+        ''')
+        
         # 创建索引以提高查询性能
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_questions_book_id ON questions(book_id)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_questions_kb_name ON questions(kb_name)')
