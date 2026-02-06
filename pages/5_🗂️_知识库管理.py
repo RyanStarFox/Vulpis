@@ -122,25 +122,26 @@ def render_task_progress(kb_name):
 
 st.set_page_config(page_title="知识库管理", page_icon="logo.png", layout="wide")
 
-st.markdown(f"""
+# Sidebar CSS (已包含 <style> 标签)
+st.markdown(ui_components.get_sidebar_css(), unsafe_allow_html=True)
+
+# 页面样式
+st.markdown("""
 <style>
-    .block-container {{ padding-top: 2rem; }}
-    img {{ image-rendering: -webkit-optimize-contrast; }}
-    
-    /* Sidebar Styles from ui_components */
-    {ui_components.get_sidebar_css()}
+    .block-container { padding-top: 2rem; }
+    img { image-rendering: -webkit-optimize-contrast; }
     
     /* 进度条动画 */
-    @keyframes shimmer {{
-        0% {{ background-position: -200% 0; }}
-        100% {{ background-position: 200% 0; }}
-    }}
+    @keyframes shimmer {
+        0% { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
+    }
     
-    .stProgress > div > div > div > div {{
+    .stProgress > div > div > div > div {
         background: linear-gradient(90deg, #667eea 25%, #764ba2 50%, #667eea 75%);
         background-size: 200% 100%;
         animation: shimmer 2s infinite;
-    }}
+    }
 </style>
 """, unsafe_allow_html=True)
 
