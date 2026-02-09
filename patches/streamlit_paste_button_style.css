@@ -1,0 +1,41 @@
+button:not(:disabled) {
+  /* Match Streamlit Input Style */
+  background-color: var(--secondary-background-color);
+  color: var(--text-color);
+  border: 1px solid rgba(128, 128, 128, 0.2); 
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 400;
+  padding: 0.25rem 0.75rem;
+  padding-top: 0.25rem;
+  padding-right: 0.75rem;
+  padding-bottom: 0.25rem;
+  padding-left: 0.75rem;
+  border-radius: 0.5rem;
+  min-height: 40px;
+  margin: 0px;
+  line-height: 1.6;
+  width: 100%; 
+  box-sizing: border-box; /* IMPORTANT for width 100% + border */
+}
+
+button:not(:disabled):hover {
+  background-color: #FF4B4B !important; 
+  color: white !important; 
+  border-color: #FF4B4B !important;
+}
+
+button:not(:disabled) {
+    cursor: pointer;
+    position: absolute;
+    top: 0;
+    left: 0; /* Ensure alignment */
+}
+
+body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background-color: transparent !important; /* Force transparent body in CSS too */
+    overflow: hidden; /* Prevent scrollbars */
+}

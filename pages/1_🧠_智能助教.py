@@ -162,15 +162,40 @@ agent = st.session_state.agent
 # Sidebar - Image Uploader
 with st.sidebar:
     st.markdown("### 📸 题目助手")
+    
+    # 方式1: 粘贴上传
+    try:
+        from streamlit_paste_button import paste_image_button
+        paste_result = paste_image_button(
+            label="📋 点击后粘贴图片 (Cmd/Ctrl+V)",
+            text_color="theme.textColor",
+            background_color="theme.backgroundColor",
+            hover_background_color="#FF4B4B",
+            key=f"paste_img_{st.session_state.get('uploader_key', 0)}"
+        )
+    except ImportError:
+        paste_result = None
+        st.caption("💡 安装 streamlit-paste-button 可启用粘贴上传")
+    
+    # 方式2: 传统文件上传
     uploaded_file = st.file_uploader(
-        "上传题目或图表截图", 
+        "或浏览上传图片", 
         type=["jpg", "png", "jpeg"],
         key=f"uploader_{st.session_state.get('uploader_key', 0)}" 
     )
     
     image_base64 = None
-    if uploaded_file:
-        st.image(uploaded_file, caption="已添加图片", use_container_width=True)
+    
+    # 优先使用粘贴的图片
+    if paste_result is not None and paste_result.image_data is not None:
+        st.image(paste_result.image_data, caption="已粘贴图片", use_container_width=True)
+        # 将 PIL Image 转换为 base64
+        import io
+        buffer = io.BytesIO()
+        paste_result.image_data.save(buffer, format="PNG")
+        image_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+    elif uploaded_file:
+        st.image(uploaded_file, caption="已上传图片", use_container_width=True)
         image_base64 = base64.b64encode(uploaded_file.getvalue()).decode('utf-8')
     
     st.markdown("---")

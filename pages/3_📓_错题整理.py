@@ -943,17 +943,40 @@ def mistake_detail_dialog(item, book_name, is_archived):
         # Image Edit
         curr_img = q.get("image")
         if curr_img:
-            st.markdown("current image:")
+            st.markdown("**当前图片：**")
             try: st.image(base64.b64decode(curr_img), width=200)
-            except: st.text("Image Error")
+            except: st.text("图片加载失败")
             if st.button("🗑️ 删除图片", key=f"del_img_{item['id']}"):
                 q["image"] = None
                 st.rerun()
         
-        new_img_file = st.file_uploader("更换/上传图片", type=["png", "jpg", "jpeg"], key=f"up_img_edit_{item['id']}")
+        # 粘贴或上传新图片
+        st.markdown("**更换/上传图片：**")
+        try:
+            from streamlit_paste_button import paste_image_button
+            paste_edit_img = paste_image_button(
+                label="📋 粘贴图片",
+                text_color="theme.textColor",
+                background_color="theme.secondaryBackgroundColor",
+                hover_background_color="#FF4B4B",
+                key=f"paste_img_edit_{item['id']}"
+            )
+        except ImportError:
+            paste_edit_img = None
+            
+        new_img_file = st.file_uploader("或浏览上传", type=["png", "jpg", "jpeg"], key=f"up_img_edit_{item['id']}", label_visibility="collapsed")
+        
+        # 显示粘贴/上传的预览
         new_img_b64 = curr_img
-        if new_img_file:
-             new_img_b64 = base64.b64encode(new_img_file.getvalue()).decode('utf-8')
+        if paste_edit_img and paste_edit_img.image_data:
+            st.image(paste_edit_img.image_data, caption="已粘贴新图片", width=200)
+            import io
+            buffer = io.BytesIO()
+            paste_edit_img.image_data.save(buffer, format="PNG")
+            new_img_b64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+        elif new_img_file:
+            st.image(new_img_file, caption="已上传新图片", width=200)
+            new_img_b64 = base64.b64encode(new_img_file.getvalue()).decode('utf-8')
         
         if new_type in ["multiple_choice", "multi_select", "boolean"]:
             # If switching, handle missing options
@@ -1083,8 +1106,8 @@ def add_mistake_dialog(selected_book):
     div[data-testid="stFileUploader"] label { width: 100%; text-align: center; }
     div[data-testid="stFileUploader"] button { margin: 0 auto; display: block; }
     section[data-testid="stFileUploaderDropzone"] { 
-        min-height: 171.5px !important; 
-        height: 171.5px !important;
+        min-height: 160px !important; 
+        height: 160px !important;
         display: flex;
         justify-content: center;
         align-items: center;
@@ -1095,17 +1118,57 @@ def add_mistake_dialog(selected_book):
     </style>
     """, unsafe_allow_html=True)
 
-    st.info("💡 上传图片或输入文本，系统将自动填充空白部分（答案、解析等）。")
+    st.info("💡 上传图片或输入文本，系统将自动填充空白部分（答案、解析等）。可以点击粘贴按钮后按 Cmd/Ctrl+V 粘贴截图。")
     # Only show unarchived books for adding new mistakes
     books = question_db.list_mistake_books(include_archived=False)
     target = st.selectbox("📚 目标错题本", books, index=books.index(selected_book) if selected_book in books else 0)
     
-    # Row 1: Images, Question, Options
+    # 尝试导入粘贴组件
+    try:
+        from streamlit_paste_button import paste_image_button
+        paste_available = True
+    except ImportError:
+        paste_available = False
+    
+    # Row 1: Images (Paste + Upload), Question, Options
     c1, c2, c3, c4 = st.columns([1, 1, 2, 2])
+    
+    # 初始化粘贴结果变量
+    paste_ocr = None
+    paste_fig = None
+    
     with c1:
-        u_ocr = st.file_uploader("📸 识别源", type=["jpg", "png", "jpeg"], key="u_ocr_new")
+        st.markdown("**📸 识别源**")
+        if paste_available:
+            paste_ocr = paste_image_button(
+                label="📋 粘贴识别源",
+                text_color="theme.textColor",
+                background_color="theme.secondaryBackgroundColor",
+                hover_background_color="#FF4B4B",
+                key="paste_ocr_new"
+            )
+            if paste_ocr and paste_ocr.image_data:
+                st.image(paste_ocr.image_data, caption="已粘贴", use_container_width=True)
+        u_ocr = st.file_uploader("或浏览上传", type=["jpg", "png", "jpeg"], key="u_ocr_new", label_visibility="collapsed")
+        if u_ocr:
+            st.image(u_ocr, caption="已上传", use_container_width=True)
+            
     with c2:
-        u_fig = st.file_uploader("🖼️ 配图", type=["jpg", "png", "jpeg"], key="u_fig_new")
+        st.markdown("**🖼️ 配图**")
+        if paste_available:
+            paste_fig = paste_image_button(
+                label="📋 粘贴配图",
+                text_color="theme.textColor",
+                background_color="theme.secondaryBackgroundColor",
+                hover_background_color="#FF4B4B",
+                key="paste_fig_new"
+            )
+            if paste_fig and paste_fig.image_data:
+                st.image(paste_fig.image_data, caption="已粘贴", use_container_width=True)
+        u_fig = st.file_uploader("或浏览上传", type=["jpg", "png", "jpeg"], key="u_fig_new", label_visibility="collapsed")
+        if u_fig:
+            st.image(u_fig, caption="已上传", use_container_width=True)
+            
     with c3:
         q_c = st.text_area("题目内容", placeholder="输入题目...", height=200)
     with c4:
@@ -1118,8 +1181,19 @@ def add_mistake_dialog(selected_book):
     with c6:
         q_e = st.text_area("解析 (可选)", placeholder="由 AI 自动生成...", height=200)
     
+    # 辅助函数：将 PIL Image 转为 base64
+    def pil_to_base64(pil_img):
+        import io
+        buffer = io.BytesIO()
+        pil_img.save(buffer, format="PNG")
+        return base64.b64encode(buffer.getvalue()).decode('utf-8')
+    
+    # 判断是否有图片输入（包括粘贴和上传）
+    has_ocr = (paste_ocr and paste_ocr.image_data) or u_ocr
+    has_fig = (paste_fig and paste_fig.image_data) or u_fig
+    
     if st.button("智能识别并添加", type="primary", use_container_width=True):
-        if u_ocr or u_fig or q_c:
+        if has_ocr or has_fig or q_c:
             i_q = q_c if q_c else "（正在识别中...）"
             
             # Normalize answer separators: Support both half-width and full-width
@@ -1127,8 +1201,21 @@ def add_mistake_dialog(selected_book):
             
             i_d = {"question": i_q, "explanation": q_e if q_e else "（处理中...）"}
             
-            ocr_b64 = base64.b64encode(u_ocr.getvalue()).decode('utf-8') if u_ocr else None
-            fig_b64 = base64.b64encode(u_fig.getvalue()).decode('utf-8') if u_fig else None
+            # 获取 OCR 图片 base64（优先粘贴）
+            if paste_ocr and paste_ocr.image_data:
+                ocr_b64 = pil_to_base64(paste_ocr.image_data)
+            elif u_ocr:
+                ocr_b64 = base64.b64encode(u_ocr.getvalue()).decode('utf-8')
+            else:
+                ocr_b64 = None
+            
+            # 获取配图 base64（优先粘贴）
+            if paste_fig and paste_fig.image_data:
+                fig_b64 = pil_to_base64(paste_fig.image_data)
+            elif u_fig:
+                fig_b64 = base64.b64encode(u_fig.getvalue()).decode('utf-8')
+            else:
+                fig_b64 = None
             
             # Request 1: Only use figure if explicitly provided (No fallback to OCR)
             final_attachment = fig_b64 
